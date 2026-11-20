@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #071014;
+        font-family: "Microsoft YaHei", "Noto Sans SC", Arial, sans-serif;
+        color: #f4f7f8;
+      }
+      #root {
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 18% 16%, rgba(39, 215, 255, 0.18), transparent 28%),
+          linear-gradient(180deg, #071014 0%, #0b171c 48%, #071014 100%);
+      }
+      #root::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(244, 247, 248, 0.055) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(244, 247, 248, 0.055) 1px, transparent 1px);
+        background-size: 54px 54px;
+        opacity: 0.55;
+      }
+      .scene {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        padding: 116px 82px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 38px;
+        z-index: 1;
+      }
+      .kicker {
+        font-family: Consolas, "Microsoft YaHei", monospace;
+        font-size: 28px;
+        letter-spacing: 0;
+        color: #27d7ff;
+      }
+      .title {
+        font-size: 86px;
+        line-height: 1.08;
+        font-weight: 800;
+      }
+      .subtitle {
+        font-size: 38px;
+        line-height: 1.45;
+        color: #9fb2ba;
+      }
+      .tag-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .tag {
+        border: 1px solid rgba(39, 215, 255, 0.58);
+        color: #f4f7f8;
+        padding: 14px 20px;
+        font-size: 28px;
+        background: rgba(16, 32, 40, 0.82);
+      }
+      .board {
+        width: 100%;
+        min-height: 660px;
+        border: 1px solid rgba(244, 247, 248, 0.18);
+        background: rgba(16, 32, 40, 0.72);
+        padding: 42px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 34px;
+      }
+      .mono-stack {
+        display: grid;
+        grid-template-rows: repeat(4, 118px);
+        gap: 20px;
+      }
+      .layer {
+        border-left: 8px solid #27d7ff;
+        background: rgba(244, 247, 248, 0.08);
+        display: flex;
+        align-items: center;
+        padding: 0 36px;
+        font-size: 38px;
+        font-weight: 700;
+      }
+      .micro-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 28px;
+      }
+      .service {
+        height: 176px;
+        border: 2px solid rgba(81, 227, 164, 0.72);
+        background: rgba(81, 227, 164, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: 800;
+      }
+      .bus {
+        height: 92px;
+        background: #ffc857;
+        color: #071014;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 34px;
+        font-weight: 900;
+      }
+      .event-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        align-items: center;
+        gap: 18px;
+      }
+      .event-box {
+        height: 142px;
+        border: 2px solid rgba(39, 215, 255, 0.68);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 31px;
+        font-weight: 800;
+        background: rgba(39, 215, 255, 0.06);
+      }
+      .arrow {
+        color: #27d7ff;
+        font-family: Consolas, monospace;
+        font-size: 54px;
+        text-align: center;
+      }
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      .choice {
+        display: grid;
+        grid-template-columns: 210px 1fr;
+        align-items: center;
+        min-height: 116px;
+        border: 1px solid rgba(244, 247, 248, 0.16);
+        background: rgba(244, 247, 248, 0.065);
+      }
+      .choice strong {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        color: #071014;
+        background: #27d7ff;
+      }
+      .choice span {
+        padding: 0 24px;
+        font-size: 30px;
+        color: #f4f7f8;
+      }
+      .caption {
+        position: absolute;
+        left: 82px;
+        right: 82px;
+        bottom: 92px;
+        font-size: 34px;
+        line-height: 1.36;
+        color: #f4f7f8;
+        z-index: 4;
+      }
+      .accent {
+        color: #ffc857;
+      }
+      .progress {
+        position: absolute;
+        left: 82px;
+        right: 82px;
+        bottom: 54px;
+        height: 8px;
+        background: rgba(244, 247, 248, 0.14);
+        z-index: 5;
+      }
+      .progress span {
+        display: block;
+        height: 100%;
+        width: 100%;
+        transform-origin: left center;
+        transform: scaleX(0);
+        background: #27d7ff;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="12"
+      data-width="1080"
+      data-height="1920"
+    >
+      <section id="s1" class="scene clip" data-start="0" data-duration="3" data-track-index="1">
+        <div class="kicker">ARCHITECTURE IN 12 SECONDS</div>
+        <h1 class="title">不同架构，<br />其实是在选择<br /><span class="accent">变化怎么发生</span></h1>
+        <p class="subtitle">不是越新越好，而是看团队、业务、复杂度。</p>
+        <div class="tag-row">
+          <span class="tag">单体</span>
+          <span class="tag">分层</span>
+          <span class="tag">微服务</span>
+          <span class="tag">事件驱动</span>
+        </div>
+      </section>
+
+      <section id="s2" class="scene clip" data-start="3" data-duration="3" data-track-index="1">
+        <div class="kicker">01 / MONOLITH + LAYERS</div>
+        <h2 class="title">单体和分层：<br />先把路修直</h2>
+        <div class="board">
+          <div class="mono-stack">
+            <div class="layer">界面层 UI</div>
+            <div class="layer">业务层 Service</div>
+            <div class="layer">数据层 Repository</div>
+            <div class="layer">数据库 Database</div>
+          </div>
+        </div>
+        <p class="subtitle">适合早期产品：部署简单，调用清楚，改动集中。</p>
+      </section>
+
+      <section id="s3" class="scene clip" data-start="6" data-duration="3" data-track-index="1">
+        <div class="kicker">02 / MICROSERVICES</div>
+        <h2 class="title">微服务：<br />把变化拆给不同小队</h2>
+        <div class="board">
+          <div class="micro-grid">
+            <div class="service">用户服务</div>
+            <div class="service">订单服务</div>
+            <div class="service">支付服务</div>
+            <div class="service">库存服务</div>
+          </div>
+        </div>
+        <p class="subtitle">适合复杂业务：独立发布，但网络、监控、数据一致性会变难。</p>
+      </section>
+
+      <section id="s4" class="scene clip" data-start="9" data-duration="3" data-track-index="1">
+        <div class="kicker">03 / EVENT-DRIVEN</div>
+        <h2 class="title">事件驱动：<br />让系统听见“发生了什么”</h2>
+        <p class="subtitle">适合削峰、解耦、异步协作，但排查链路要更认真。</p>
+        <div class="board">
+          <div class="event-row">
+            <div class="event-box">订单已创建</div>
+            <div class="arrow">→</div>
+            <div class="event-box">支付 / 库存 / 通知<br />各自响应</div>
+          </div>
+          <div class="bus">Event Bus</div>
+          <div class="compare" data-layout-allow-overflow>
+            <div class="choice"><strong>小项目</strong><span>单体 + 分层，跑得最快。</span></div>
+            <div class="choice"><strong>大组织</strong><span>微服务，边界更清楚。</span></div>
+            <div class="choice"><strong>高并发</strong><span>事件驱动，削峰解耦。</span></div>
+          </div>
+        </div>
+      </section>
+
+      <div id="closing-caption" class="caption clip" data-start="0" data-duration="12" data-track-index="2">
+        记住一句：架构不是图好看，是让下一次变化更便宜。
+      </div>
+      <div class="progress"><span></span></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.to(".progress span", { scaleX: 1, duration: 12, ease: "none" }, 0);
+
+      function sceneIn(scene, at) {
+        tl.from(scene, { opacity: 0, duration: 0.22, ease: "power1.out" }, at);
+        tl.from(`${scene} .kicker`, { y: 26, opacity: 0, duration: 0.42, ease: "power3.out" }, at + 0.1);
+        tl.from(`${scene} .title`, { y: 54, opacity: 0, duration: 0.55, ease: "power3.out" }, at + 0.22);
+        tl.from(`${scene} .subtitle`, { y: 30, opacity: 0, duration: 0.42, ease: "power2.out" }, at + 0.72);
+      }
+      function sceneOut(scene, at) {
+        tl.to(scene, { opacity: 0, y: -26, duration: 0.28, ease: "power2.in" }, at);
+      }
+
+      sceneIn("#s1", 0);
+      tl.from("#s1 .tag", { y: 28, opacity: 0, stagger: 0.08, duration: 0.38, ease: "power2.out" }, 1.15);
+      sceneOut("#s1", 2.72);
+
+      sceneIn("#s2", 3);
+      tl.from("#s2 .board", { scale: 0.96, opacity: 0, duration: 0.45, ease: "power2.out" }, 3.75);
+      tl.from("#s2 .layer", { x: -58, opacity: 0, stagger: 0.12, duration: 0.34, ease: "power3.out" }, 4.0);
+      sceneOut("#s2", 5.72);
+
+      sceneIn("#s3", 6);
+      tl.from("#s3 .board", { scale: 0.96, opacity: 0, duration: 0.45, ease: "power2.out" }, 6.75);
+      tl.from("#s3 .service", { scale: 0.72, opacity: 0, stagger: 0.08, duration: 0.36, ease: "back.out(1.7)" }, 7.05);
+      tl.to("#s3 .service", { boxShadow: "0 0 28px rgba(81,227,164,0.35)", stagger: 0.05, duration: 0.35 }, 7.65);
+      sceneOut("#s3", 8.72);
+
+      sceneIn("#s4", 9);
+      tl.from("#s4 .board", { scale: 0.96, opacity: 0, duration: 0.42, ease: "power2.out" }, 9.7);
+      tl.from("#s4 .event-box", { y: 34, opacity: 0, stagger: 0.12, duration: 0.35, ease: "power2.out" }, 9.95);
+      tl.from("#s4 .arrow", { scaleX: 0, opacity: 0, duration: 0.28, ease: "power2.out" }, 10.12);
+      tl.from("#s4 .bus", { x: -80, opacity: 0, duration: 0.35, ease: "power3.out" }, 10.35);
+      tl.from("#s4 .choice", { x: 46, opacity: 0, stagger: 0.11, duration: 0.34, ease: "power2.out" }, 10.65);
+      tl.from(".caption", { y: 36, opacity: 0, duration: 0.5, ease: "power2.out" }, 0.35);
+      tl.to(".caption", { color: "#ffc857", duration: 0.25 }, 10.9);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

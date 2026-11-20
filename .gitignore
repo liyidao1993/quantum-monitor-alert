@@ -1,0 +1,30 @@
+node_modules
+dist
+dist-alert
+.env
+.runtime
+alert-daemon.config.json
+Quantum_Monitor_System/1_Core_Engine/settings.json
+dev-3000*.log
+
+# Local secrets & SSH keys (NEVER commit to public repo)
+aliyun/local-secrets/
+*.pem
+*.key
+*.ppk
+*ed25519*
+
+# Build artifacts, APKs, caches & nested/external repos
+*.apk
+awesome-design-md/
+kuaisujiaoyi/
+floating-receiver/app/build/
+floating-receiver/.gradle/
+floating-receiver/sender/.venv/
+.codegraph/
+.playwright-cli/
+.pytest_cache/
+pytest-cache-files-*/
+output/
+.claude/
+.codex-last30days-plan.json

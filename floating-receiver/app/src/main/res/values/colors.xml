@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#0F1117</color>
+    <color name="panel">#EE1B2230</color>
+    <color name="panel_stroke">#334155</color>
+    <color name="text_primary">#F8FAFC</color>
+    <color name="text_secondary">#AAB6C5</color>
+    <color name="primary">#5B8DEF</color>
+    <color name="success">#31C48D</color>
+    <color name="warning">#F5A524</color>
+    <color name="error">#F05252</color>
+    <color name="info">#5B8DEF</color>
+    <color name="positive">#31C48D</color>
+    <color name="negative">#F05252</color>
+    <color name="surface_card">#171D29</color>
+    <color name="surface_card_alt">#20293A</color>
+</resources>

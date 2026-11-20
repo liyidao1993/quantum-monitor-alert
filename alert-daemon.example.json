@@ -1,0 +1,81 @@
+{
+  "enabled": true,
+  "monitor": {
+    "top_volume": 0,
+    "price_seconds": 0,
+    "status_log_seconds": 60
+  },
+  "instant_move": {
+    "enabled": true,
+    "window_seconds": 90,
+    "threshold_percent": 3,
+    "watchlist_threshold_percent": 1
+  },
+  "cooldown": {
+    "base_seconds": 0,
+    "same_direction_step_percent": 2,
+    "max_alerts_per_symbol_per_10min": 6,
+    "separate_up_down": true
+  },
+  "ma60_alerts": {
+    "enabled": true,
+    "cooldown_seconds": 300,
+    "same_direction_step_percent": 3,
+    "intervals": {
+      "1m": { "enabled": true, "threshold_percent": 8 },
+      "15m": { "enabled": true, "threshold_percent": 12 },
+      "1d": { "enabled": false, "threshold_percent": 20 }
+    }
+  },
+  "ranking_broadcast": {
+    "enabled": true,
+    "log_enabled": true,
+    "broadcast_on_startup": true,
+    "telegram_enabled": true,
+    "weixin_enabled": false,
+    "desktop_enabled": false,
+    "interval_seconds": 900,
+    "top_n": 10,
+    "sections": ["change_up", "change_down", "ma60_1m", "ma60_15m", "ma60_1d"]
+  },
+  "watchlist": {
+    "enabled": true,
+    "price_seconds": 15,
+    "items": [
+      { "symbol": "GC1!", "market": "Futures_Global", "label": "黄金", "enabled": true },
+      { "symbol": "CL1!", "market": "Futures_Global", "label": "石油", "enabled": true },
+      { "symbol": "NVDA", "market": "Stocks_US", "label": "英伟达", "enabled": true },
+      { "symbol": "ZC1!", "market": "Futures_Global", "label": "美玉米", "enabled": true },
+      { "symbol": "C0", "market": "Futures_CN", "label": "国内玉米主力", "enabled": true }
+    ]
+  },
+  "telegram": {
+    "enabled": true,
+    "bot_token": "",
+    "chat_id": "",
+    "command_polling_enabled": true,
+    "command_poll_interval_seconds": 5,
+    "send_startup_message": false
+  },
+  "weixin": {
+    "enabled": false,
+    "credential_path": ".runtime/weixin/token.json",
+    "state_path": ".runtime/weixin/state.json",
+    "command_polling_enabled": true,
+    "send_startup_message": false
+  },
+  "desktop_notify": {
+    "enabled": false,
+    "sound": true,
+    "min_severity": "warning"
+  },
+  "commands": {
+    "enabled": true,
+    "max_top_n": 20
+  },
+  "logging": {
+    "level": "info",
+    "file_enabled": true,
+    "file_path": ".runtime/alert-daemon/binance-alert-daemon.log"
+  }
+}

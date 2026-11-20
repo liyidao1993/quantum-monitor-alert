@@ -1,0 +1,5 @@
+base-url: "http://47.83.122.79:8090"
+listen-http: ":8090"
+cache-file: "/var/cache/ntfy/cache.db"
+cache-duration: "24h"
+keepalive-interval: "45s"

@@ -1,0 +1,10 @@
+.gradle/
+.idea/
+local.properties
+**/build/
+*.iml
+sender/.env
+sender/.venv/
+sender/messages.db
+__pycache__/
+.pytest_cache/

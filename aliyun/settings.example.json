@@ -1,0 +1,267 @@
+{
+  "GlobalSettings": {
+    "color_theme": "Dark",
+    "price_color_style": "GreenUpRedDown",
+    "auto_start_modules": [
+      "Crypto_Binance",
+      "Futures_Global",
+      "Stocks_US",
+      "Stocks_CN"
+    ]
+  },
+  "BinanceSettings": {
+    "monitor_top_volume": 50,
+    "visible_columns": {
+      "show_price": true,
+      "show_24h_change": true,
+      "show_abnormal_change": false,
+      "show_ma60_1m": true,
+      "show_ma60_15m": true,
+      "show_ma60_1d": true
+    },
+    "abnormal_calc_rule": {
+      "time_window_min": 5,
+      "threshold_percent": 3
+    }
+  },
+  "CustomMarketSettings": {
+    "cn_stocks_list": [
+      "sh600519",
+      "sz000858"
+    ],
+    "us_stocks_list": [
+      "AAPL",
+      "MSFT",
+      "NVDA",
+      "TSLA",
+      "SPY"
+    ],
+    "cn_futures_list": [
+      "C0",
+      "C2607",
+      "RB0",
+      "AU0",
+      "SC0",
+      "IF0",
+      "AP0"
+    ],
+    "futures_global_list": [
+      "GC1!",
+      "NQ1!",
+      "ES1!",
+      "CL1!",
+      "SI1!",
+      "YM1!",
+      "ZC1!"
+    ]
+  },
+  "AlertSettings": {
+    "enabled": true,
+    "cooldown_seconds": 100,
+    "history_limit": 100,
+    "desktop_notify": false,
+    "sound_alert": true,
+    "telegram_enabled": false,
+    "telegram_bot_token": "",
+    "telegram_chat_id": "",
+    "thresholds": {
+      "Crypto_Binance": {
+        "ma60_dev_1m": 5,
+        "ma60_dev_15m": 10,
+        "ma60_dev_1d": 20,
+        "instant_move_percent": 3,
+        "instant_window_seconds": 120
+      },
+      "Futures_CN": {
+        "ma60_dev_1m": 0.5,
+        "ma60_dev_15m": 1,
+        "ma60_dev_1d": 3,
+        "instant_move_percent": 1,
+        "instant_window_seconds": 90
+      },
+      "Futures_Global": {
+        "ma60_dev_1m": 0.5,
+        "ma60_dev_15m": 1,
+        "ma60_dev_1d": 3,
+        "instant_move_percent": 1,
+        "instant_window_seconds": 90
+      },
+      "Stocks_US": {
+        "ma60_dev_1m": 1,
+        "ma60_dev_15m": 2,
+        "ma60_dev_1d": 5,
+        "instant_move_percent": 1,
+        "instant_window_seconds": 90
+      },
+      "Stocks_CN": {
+        "ma60_dev_1m": 1,
+        "ma60_dev_15m": 2,
+        "ma60_dev_1d": 5,
+        "instant_move_percent": 1,
+        "instant_window_seconds": 90
+      },
+      "Macro_Home": {
+        "ma60_dev_1m": 1,
+        "ma60_dev_15m": 2,
+        "ma60_dev_1d": 5,
+        "instant_move_percent": 1,
+        "instant_window_seconds": 90
+      }
+    }
+  },
+  "ApiEndpointSettings": {
+    "binance_fapi_base": "https://fapi.binance.com",
+    "binance_ws_base": "wss://fstream.binance.com/market/stream",
+    "binance_use_all_ticker_stream": true,
+    "socks_proxy": "",
+    "https_proxy": "",
+    "sina_min_line_url": "https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var/InnerFuturesNewService.getFewMinLine",
+    "sina_quote_url": "https://hq.sinajs.cn/list=",
+    "yahoo_chart_base": "https://query2.finance.yahoo.com/v8/finance/chart",
+    "tradingview_widget_url": "https://s3.tradingview.com/tv.js"
+  },
+  "RefreshIntervalSettings": {
+    "Crypto_Binance": {
+      "price_seconds": 5,
+      "ma60_1m_seconds": 60,
+      "ma60_15m_seconds": 300,
+      "ma60_1d_seconds": 3600
+    },
+    "Futures_CN": {
+      "price_seconds": 15,
+      "ma60_1m_seconds": 60,
+      "ma60_15m_seconds": 300,
+      "ma60_1d_seconds": 3600
+    },
+    "Futures_Global": {
+      "price_seconds": 60,
+      "ma60_1m_seconds": 60,
+      "ma60_15m_seconds": 300,
+      "ma60_1d_seconds": 3600
+    },
+    "Stocks_US": {
+      "price_seconds": 60,
+      "ma60_1m_seconds": 60,
+      "ma60_15m_seconds": 300,
+      "ma60_1d_seconds": 3600
+    },
+    "Stocks_CN": {
+      "price_seconds": 60,
+      "ma60_1m_seconds": 60,
+      "ma60_15m_seconds": 300,
+      "ma60_1d_seconds": 3600
+    },
+    "Macro_Home": {
+      "price_seconds": 60,
+      "ma60_1m_seconds": 60,
+      "ma60_15m_seconds": 300,
+      "ma60_1d_seconds": 3600
+    }
+  },
+  "NewsSettings": {
+    "enabled": true,
+    "key_refresh_seconds": 900,
+    "breaking_refresh_seconds": 60,
+    "cache_limit": 120,
+    "translate_english": true,
+    "translation_provider": "mymemory",
+    "translation_api_url": "https://api.mymemory.translated.net/get",
+    "ai_analysis_enabled": true,
+    "ai_provider": "google",
+    "ai_api_base": "",
+    "ai_api_key": "",
+    "ai_model": "gpt-4o-mini",
+    "sources": [
+      {
+        "id": "investing_cn_macro",
+        "label": "英为财情宏观",
+        "url": "https://cn.investing.com/rss/news_14.rss",
+        "enabled": true
+      },
+      {
+        "id": "investing_cn_futures",
+        "label": "英为财情期货",
+        "url": "https://cn.investing.com/rss/news_11.rss",
+        "enabled": true
+      },
+      {
+        "id": "investing_cn_stocks",
+        "label": "英为财情股票",
+        "url": "https://cn.investing.com/rss/news_25.rss",
+        "enabled": true
+      },
+      {
+        "id": "investing_cn_crypto",
+        "label": "英为财情加密",
+        "url": "https://cn.investing.com/rss/news_301.rss",
+        "enabled": true
+      },
+      {
+        "id": "investing_cn_market_overview",
+        "label": "英为财情市场概况",
+        "url": "https://cn.investing.com/rss/market_overview.rss",
+        "enabled": true
+      },
+      {
+        "id": "sina_us_stock",
+        "label": "新浪财经美股",
+        "url": "https://rss.sina.com.cn/finance/usstock.xml",
+        "enabled": true
+      },
+      {
+        "id": "cnbc_top",
+        "label": "CNBC",
+        "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+        "enabled": true
+      },
+      {
+        "id": "marketwatch_realtime",
+        "label": "MarketWatch",
+        "url": "https://feeds.marketwatch.com/marketwatch/realtimeheadlines/",
+        "enabled": true
+      },
+      {
+        "id": "nasdaq_markets",
+        "label": "Nasdaq",
+        "url": "https://www.nasdaq.com/feed/rssoutbound?category=Markets",
+        "enabled": true
+      },
+      {
+        "id": "yahoo_finance",
+        "label": "Yahoo Finance",
+        "url": "https://finance.yahoo.com/news/rssindex",
+        "enabled": true
+      },
+      {
+        "id": "coindesk",
+        "label": "CoinDesk",
+        "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+        "enabled": true
+      },
+      {
+        "id": "cointelegraph",
+        "label": "Cointelegraph",
+        "url": "https://cointelegraph.com/rss",
+        "enabled": true
+      },
+      {
+        "id": "tonghuashun_7x24",
+        "label": "同花顺7x24",
+        "url": "https://news.10jqka.com.cn/tapp/news/push/stock/?page=1&tag=&track=website&pagesize=50",
+        "enabled": true
+      },
+      {
+        "id": "jin10_important",
+        "label": "金十重要快讯",
+        "url": "https://flash-api.jin10.com/get_flash_list?channel=-8200&vip=1",
+        "enabled": true
+      },
+      {
+        "id": "jin10_market",
+        "label": "金十市场快讯",
+        "url": "https://flash-api.jin10.com/get_flash_list?channel=-8200&vip=1",
+        "enabled": true
+      }
+    ]
+  }
+}
