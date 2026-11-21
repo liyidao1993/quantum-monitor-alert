@@ -84,7 +84,12 @@ export class InstantMoveRule {
 
     const move = detectMove(window);
     if (!move || Math.abs(move.movePercent) < threshold) return null;
-    if (!this.canRaise(ruleKey, move, now)) return null;
+    if (!this.canRaise(ruleKey, move, threshold, now)) return null;
+
+    // Reset sliding window to the current trigger price as the new anchor point,
+    // preventing the same price wave from re-triggering as old points slide out.
+    this.windows.set(ruleKey, [{ ts: now, price: tick.price }]);
+    this.pendingWatchlistSpikes.delete(ruleKey);
 
     const value = Number(move.movePercent.toFixed(3));
     const severity = Math.abs(value) >= threshold * 2 ? "critical" : "warning";
@@ -113,7 +118,7 @@ export class InstantMoveRule {
     return this.config.instant_move.effective_threshold_percent;
   }
 
-  private canRaise(symbol: string, move: Move, now: number): boolean {
+  private canRaise(symbol: string, move: Move, threshold: number, now: number): boolean {
     const direction = this.config.cooldown.separate_up_down ? move.direction : "both";
     const key = `${symbol}:${direction}`;
     const record = this.records.get(key);
@@ -122,7 +127,9 @@ export class InstantMoveRule {
     const cooldownMs = this.config.cooldown.effective_base_seconds * 1000;
     const hasNewExtreme = !record || move.extremeTs > record.lastExtremeTs;
     const cooldownPassed = !record || now - record.lastAt >= cooldownMs;
-    const steppedBeyond = Boolean(record && step > 0 && absMove >= record.lastAbs + step);
+    // Since the window resets to the trigger price after each alert, absMove in a
+    // subsequent evaluation is already the incremental move from the previous trigger price.
+    const steppedBeyond = Boolean(record && step > 0 && absMove >= Math.max(threshold, step));
 
     if (!hasNewExtreme) return false;
     if (!cooldownPassed && !steppedBeyond) return false;

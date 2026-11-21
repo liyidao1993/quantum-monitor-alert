@@ -49,13 +49,14 @@ assert.equal(upward?.value, 4);
 assert.equal(upward?.period, "90秒");
 assert.doesNotMatch(upward?.message ?? "", /窗口低点|窗口高点/, "window low/high lines must be omitted");
 
-assert.equal(instant.evaluate(tick(103)), null, "without a new extreme there should be no duplicate alert");
+assert.equal(instant.evaluate(tick(103)), null, "small pullback from new anchor 104 must not trigger");
+assert.equal(instant.evaluate(tick(106)), null, "move from new anchor 104 (+1.92%) below 3% threshold must not re-trigger");
 
-const steppedUpward = instant.evaluate(tick(106));
-assert.equal(steppedUpward?.value, 6);
+const steppedUpward = instant.evaluate(tick(108));
+assert.equal(steppedUpward?.type, "instant_move", "new +3.85% wave from anchor 104 (or +4.85% from 103) must trigger");
 
 const downward = instant.evaluate(tick(99));
-assert.ok((downward?.value ?? 0) < 0, "a new lower extreme should produce a down alert");
+assert.ok((downward?.value ?? 0) < 0, "a new >3% drop from anchor 108 should produce a down alert");
 
 const ma60 = new Ma60DeviationRule(config);
 const maAlerts = ma60.evaluate(tick(110, {
