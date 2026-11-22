@@ -59,6 +59,12 @@
     "price_seconds": 15,
     "items": [
       {
+        "symbol": "BTCUSDT",
+        "market": "Crypto_Binance",
+        "label": "比特币",
+        "enabled": true
+      },
+      {
         "symbol": "GC1!",
         "market": "Futures_Global",
         "label": "黄金",

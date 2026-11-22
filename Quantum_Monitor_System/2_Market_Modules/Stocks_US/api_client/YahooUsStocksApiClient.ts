@@ -11,6 +11,10 @@ const sharedKeepAliveAgent = new HttpsAgent({ keepAlive: true, maxSockets: 8, ke
 interface YahooChartResponse {
   chart?: {
     result?: Array<{
+      meta?: {
+        regularMarketPrice?: number;
+        regularMarketTime?: number;
+      };
       timestamp?: number[];
       indicators?: {
         quote?: Array<{
@@ -54,6 +58,16 @@ export class YahooUsStocksApiClient implements IUsStocksApiClient {
         low: optionalNumber(quote?.low?.[i]),
         close,
         volume: optionalNumber(quote?.volume?.[i]),
+      });
+    }
+
+    if (candles.length === 0 && typeof result?.meta?.regularMarketPrice === 'number' && result.meta.regularMarketPrice > 0) {
+      const tsSec = typeof result.meta.regularMarketTime === 'number' && result.meta.regularMarketTime > 0
+        ? result.meta.regularMarketTime
+        : Math.floor(Date.now() / 1000);
+      candles.push({
+        time: new Date(tsSec * 1000).toISOString(),
+        close: result.meta.regularMarketPrice,
       });
     }
 
