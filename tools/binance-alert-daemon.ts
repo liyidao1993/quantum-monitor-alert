@@ -20,7 +20,7 @@ import {
   buildFloatingAlertFields,
   buildFloatingAlertMarkdown,
   buildFloatingAlertTitle,
-  buildNtfyAlertTitle,
+  buildNtfyAlertPayload,
   buildTelegramAlertMarkdown,
   DesktopNotifier,
   FloatingReceiverNotifier,
@@ -29,6 +29,7 @@ import {
   type TelegramUpdate,
 } from "./alert-daemon/notifiers.js";
 import {
+  buildNtfyBroadcastPayload,
   formatAlertContext,
   formatDesktopRankingSummary,
   formatHelp,
@@ -145,7 +146,7 @@ async function main(): Promise<void> {
     ].filter((item): item is DaemonAlert => Boolean(item));
 
     for (const alert of alerts) {
-      void dispatchAlert(appendContext(alert, formatAlertContext(store, alert.symbol)), telegram, weixin, ntfy, desktop, floating, config, logger);
+      void dispatchAlert(appendContext(alert, formatAlertContext(store, alert.symbol)), telegram, weixin, ntfy, desktop, floating, config, logger, store, tick);
     }
   };
 
@@ -211,6 +212,8 @@ async function dispatchAlert(
   floating: FloatingReceiverNotifier,
   config: EffectiveDaemonConfig,
   logger: DaemonLogger,
+  store?: BinanceMarketStore,
+  sourceTick?: DaemonTick,
 ): Promise<void> {
   const text = buildAlertText(alert.title, alert.message);
   logger.warn(alert.title, { symbol: alert.symbol, value: alert.value, threshold: alert.threshold });
@@ -225,7 +228,8 @@ async function dispatchAlert(
       ? Math.min(5, config.ntfy.alert_priority + 1)
       : config.ntfy.alert_priority;
     const tag = alert.value >= 0 ? "chart_with_upwards_trend" : "chart_with_downwards_trend";
-    await ntfy.send(buildNtfyAlertTitle(alert), alert.message, { priority, tags: [tag] });
+    const ntfyAlert = buildNtfyAlertPayload(alert, store, sourceTick);
+    await ntfy.send(ntfyAlert.title, ntfyAlert.message, { priority, tags: [tag] });
   }
   await floating.send(
     buildFloatingAlertTitle(alert),
@@ -291,7 +295,9 @@ async function maybeBroadcastRankings(
     if (ok) logger.info("Weixin ranking broadcast sent");
   }
   if (canSendNtfy) {
-    const ok = await ntfy.send("Quantum 行情广播", text, {
+    const ntfyBroadcast = buildNtfyBroadcastPayload(store, config, binanceOnline);
+    const ok = await ntfy.send(ntfyBroadcast.title, ntfyBroadcast.message, {
+      markdown: true,
       priority: config.ntfy.broadcast_priority,
       tags: ["bar_chart"],
     });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { buildFloatingAlertMarkdown, buildNtfyAlertTitle, buildTelegramAlertMarkdown } from "./notifiers.js";
-import { formatAlertContext, formatTelegramRankingBroadcast, formatTelegramWatchlistBroadcast } from "./ranking.js";
+import { buildFloatingAlertMarkdown, buildNtfyAlertPayload, buildNtfyAlertTitle, buildTelegramAlertMarkdown } from "./notifiers.js";
+import { buildNtfyBroadcastPayload, formatAlertContext, formatTelegramRankingBroadcast, formatTelegramWatchlistBroadcast } from "./ranking.js";
 
 const rankingRows = [
   { rank: 1, symbol: "BTC/USDT", price: 118520, value: 3.21, updated_at: new Date().toISOString() },
@@ -84,6 +84,49 @@ assert.equal(buildNtfyAlertTitle({
   threshold: 3,
   created_at: new Date().toISOString(),
   message: "",
-}), "📈 BTC/USDT +3.21% (90秒)");
+}), "BTC +3.21% (90s)");
+
+const ntfyWlAlert = buildNtfyAlertPayload({
+  id: "wl",
+  type: "instant_move",
+  symbol: "NVDA",
+  period: "90秒",
+  title: "[价格异动] NVDA",
+  severity: "warning",
+  value: -1.08,
+  threshold: 1,
+  created_at: new Date().toISOString(),
+  message: "",
+}, {
+  getTick: (symbol: string) => ticks.get(symbol),
+  getSymbolRanks: () => ({}),
+} as never);
+assert.equal(ntfyWlAlert.title, "英伟达 NVDA -1.08% (90s) · 202.49");
+assert.match(ntfyWlAlert.message, /^今日 -2\.37% \| 1m \+0\.12% · 15m -0\.50%\n/);
+
+const ntfyBroadcast = buildNtfyBroadcastPayload(store, {
+  ranking_broadcast: {
+    enabled: true,
+    log_enabled: true,
+    broadcast_on_startup: true,
+    telegram_enabled: false,
+    weixin_enabled: false,
+    ntfy_enabled: true,
+    desktop_enabled: false,
+    interval_seconds: 600,
+    top_n: 3,
+    sections: ["change_up", "change_down", "ma60_1m", "ma60_15m", "ma60_1d"],
+  },
+  watchlist: {
+    enabled: true,
+    price_seconds: 15,
+    items: [{ symbol: "NVDA", market: "Stocks_US", label: "英伟达", enabled: true }],
+  },
+});
+assert.match(ntfyBroadcast.title, /^行情广播 · /);
+assert.match(ntfyBroadcast.message, /\*\*🔥 24H 涨跌 TOP 3\*\*/);
+assert.match(ntfyBroadcast.message, /\*\*📐 MA60 偏离 TOP 3\*\*/);
+assert.match(ntfyBroadcast.message, /\*\*👀 自选快照 \(现价 \/ 今日 \/ 15m\)\*\*/);
+assert.doesNotMatch(ntfyBroadcast.message, /\/USDT/);
 
 console.log("telegram rich formatting tests passed");

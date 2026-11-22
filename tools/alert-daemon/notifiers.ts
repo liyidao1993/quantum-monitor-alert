@@ -3,8 +3,10 @@ import https, { type Agent } from "node:https";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { SocksProxyAgent } from "socks-proxy-agent";
 import type { DaemonAlert } from "./alertRules.js";
+import { formatSigned } from "./alertRules.js";
 import type { EffectiveDaemonConfig, Severity } from "./config.js";
 import type { DaemonLogger } from "./logger.js";
+import type { BinanceMarketStore, DaemonTick } from "./marketStore.js";
 
 type FloatingMessageKind = "alert" | "scheduled";
 export interface FloatingAlertFields {
@@ -175,7 +177,7 @@ export class NtfyNotifier {
   async send(
     title: string,
     message: string,
-    options: { priority?: number; tags?: string[] } = {},
+    options: { priority?: number; tags?: string[]; markdown?: boolean } = {},
   ): Promise<boolean> {
     if (!this.enabled) return false;
     const headers: Record<string, string> = {
@@ -192,6 +194,7 @@ export class NtfyNotifier {
           topic: this.topic,
           title: title.slice(0, 120),
           message: message.slice(0, 3900),
+          ...(options.markdown ? { markdown: true } : {}),
           priority: options.priority ?? 3,
           tags: options.tags ?? [],
         }),
@@ -327,9 +330,98 @@ export function buildAlertText(title: string, message: string): string {
   return `${title}\n\n${message}`;
 }
 
+export function stripUsdt(symbol: string): string {
+  return String(symbol || "").replace(/\/USDT$/i, "").replace(/USDT$/i, "") || String(symbol || "");
+}
+
+export function formatCompactPrice(value: number): string {
+  if (!Number.isFinite(value)) return "--";
+  const abs = Math.abs(value);
+  if (abs >= 10_000) return value.toFixed(0);
+  if (abs >= 1_000) return value.toFixed(1);
+  if (abs >= 10) return value.toFixed(2);
+  if (abs >= 1) return value.toFixed(4).replace(/0$/, "");
+  if (abs >= 1e-4) return value.toPrecision(4).replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+  return value.toPrecision(3);
+}
+
+export function formatShortClockLine(): string {
+  const now = new Date();
+  const cn = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", hour12: false, hour: "2-digit", minute: "2-digit" }).format(now);
+  const us = new Intl.DateTimeFormat("zh-CN", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit" }).format(now);
+  return `${cn} (美东 ${us})`;
+}
+
+export function compactWatchlistLabel(label: string | undefined): string {
+  if (!label) return "";
+  return String(label)
+    .replace(/纳斯达克100\s*ETF/i, "纳指ETF")
+    .replace(/标普500\s*ETF/i, "标普ETF")
+    .replace(/^SK海力士$/i, "海力士")
+    .replace(/(科技|电子|主力|连续)$/g, "")
+    .trim();
+}
+
 export function buildNtfyAlertTitle(alert: DaemonAlert): string {
-  const arrow = alert.value >= 0 ? "📈" : "📉";
-  return `${arrow} ${alert.symbol} ${formatAlertPercent(alert.value)} (${alert.period})`;
+  const shortSym = stripUsdt(alert.symbol);
+  const periodShort = String(alert.period || "").replace("秒", "s");
+  return `${shortSym} ${formatAlertPercent(alert.value)} (${periodShort})`;
+}
+
+export function buildNtfyAlertPayload(
+  alert: DaemonAlert,
+  store?: Pick<BinanceMarketStore, "getTick" | "getSymbolRanks">,
+  sourceTick?: DaemonTick,
+): { title: string; message: string } {
+  const tick = sourceTick ?? store?.getTick(alert.symbol);
+  const ranks = store?.getSymbolRanks(alert.symbol) ?? {};
+  const shortSym = stripUsdt(alert.symbol);
+  const periodShort = String(alert.period || "").replace("秒", "s");
+  const priceStr = tick ? formatCompactPrice(tick.price) : "";
+
+  let headName = shortSym;
+  if (tick?.origin === "watchlist") {
+    const label = compactWatchlistLabel(tick.display_name);
+    if (label && label.toUpperCase() !== shortSym.toUpperCase()) {
+      headName = `${label} ${shortSym}`;
+    }
+  }
+
+  const titleBase = alert.type === "ma60_deviation"
+    ? `${headName} MA60(${periodShort}) ${formatAlertPercent(alert.value)}`
+    : `${headName} ${formatAlertPercent(alert.value)} (${periodShort})`;
+  const title = priceStr ? `${titleBase} · ${priceStr}` : titleBase;
+
+  const lines: string[] = [];
+  if (tick?.origin === "watchlist") {
+    const dayStr = `今日 ${formatSigned(tick.change_24h)}%`;
+    const isIdle = (tick.change_1m ?? 0) === 0 && (tick.change_15m ?? 0) === 0;
+    const m1 = typeof tick.change_1m === "number" && !isIdle ? `${formatSigned(tick.change_1m)}%` : "--";
+    const m15 = typeof tick.change_15m === "number" && !isIdle ? `${formatSigned(tick.change_15m)}%` : "--";
+    lines.push(`${dayStr} | 1m ${m1} · 15m ${m15}`);
+  } else if (tick) {
+    const rankNum = tick.change_24h >= 0 ? ranks.change_up : ranks.change_down;
+    const rankBadge = typeof rankNum === "number" ? `(${tick.change_24h >= 0 ? "涨" : "跌"}#${rankNum})` : "";
+    const dayPart = `24H ${formatSigned(tick.change_24h)}%${rankBadge}`;
+    if (alert.type === "ma60_deviation") {
+      const maPrice = alert.period === "1m" ? tick.ma60_value_1m : alert.period === "15m" ? tick.ma60_value_15m : tick.ma60_value_1d;
+      const maPart = maPrice !== undefined ? `MA60均价 ${formatCompactPrice(maPrice)}` : "";
+      lines.push([maPart, dayPart].filter(Boolean).join(" | "));
+    } else {
+      const ma1m = typeof tick.ma60_dev_1m === "number" ? `1m ${formatSigned1(tick.ma60_dev_1m)}%` : "";
+      const ma15m = typeof tick.ma60_dev_15m === "number" ? `15m ${formatSigned1(tick.ma60_dev_15m)}%` : "";
+      const maSummary = [ma1m, ma15m].filter(Boolean).join(" · ");
+      lines.push(maSummary ? `${dayPart} | MA60 ${maSummary}` : dayPart);
+    }
+  } else {
+    lines.push(alert.message.split("\n").slice(0, 2).join(" | "));
+  }
+  lines.push(formatShortClockLine());
+  return { title, message: lines.join("\n") };
+}
+
+function formatSigned1(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
 }
 
 export function buildFloatingAlertTitle(alert: DaemonAlert): string {

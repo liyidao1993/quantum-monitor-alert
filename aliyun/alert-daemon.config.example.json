@@ -40,7 +40,7 @@
     "enabled": true,
     "log_enabled": true,
     "broadcast_on_startup": true,
-    "telegram_enabled": true,
+    "telegram_enabled": false,
     "weixin_enabled": false,
     "ntfy_enabled": true,
     "desktop_enabled": true,
@@ -145,10 +145,10 @@
     ]
   },
   "telegram": {
-    "enabled": true,
+    "enabled": false,
     "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
     "chat_id": "YOUR_TELEGRAM_CHAT_ID",
-    "command_polling_enabled": true,
+    "command_polling_enabled": false,
     "command_poll_interval_seconds": 5,
     "send_startup_message": false
   },

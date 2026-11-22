@@ -1,6 +1,7 @@
-import type { WatchlistSettings } from "./config.js";
+import type { EffectiveDaemonConfig, WatchlistSettings } from "./config.js";
 import { formatPrice, formatSigned } from "./alertRules.js";
 import type { BinanceMarketStore, DaemonTick, RankingKind, RankingRow } from "./marketStore.js";
+import { compactWatchlistLabel, formatCompactPrice, formatShortClockLine, stripUsdt } from "./notifiers.js";
 
 const sectionLabels: Record<RankingKind, string> = {
   change_up: "24H 涨幅",
@@ -76,6 +77,100 @@ export function formatTelegramWatchlistBroadcast(store: BinanceMarketStore, sett
       return `| ${escapeRichCell(name)} | ${formatPrice(tick.price)} | ${formatSigned(tick.change_24h)}% | ${formatOptionalChange(tick.change_1m)} | ${formatOptionalChange(tick.change_15m)} |`;
     }),
   ].join("\n");
+}
+
+export function buildNtfyBroadcastPayload(
+  store: Pick<BinanceMarketStore, "getRankings" | "getTick"> & Partial<Pick<BinanceMarketStore, "getWatchlistTick">>,
+  config: Pick<EffectiveDaemonConfig, "ranking_broadcast" | "watchlist">,
+  binanceOnline = true,
+): { title: string; message: string } {
+  const title = `行情广播 · ${formatShortClockLine()}`;
+  const blocks: string[] = [];
+  const topN = config.ranking_broadcast.top_n;
+  const sections = config.ranking_broadcast.sections;
+
+  if (binanceOnline) {
+    const hasUp = sections.includes("change_up");
+    const hasDown = sections.includes("change_down");
+    const upRows = hasUp ? store.getRankings("change_up", topN) : [];
+    const downRows = hasDown ? store.getRankings("change_down", topN) : [];
+    const maSpecs: Array<[RankingKind, string]> = [
+      ["ma60_1m", "1m"],
+      ["ma60_15m", "15m"],
+      ["ma60_1d", "1d"],
+    ];
+    const maGroups = maSpecs
+      .filter(([key]) => sections.includes(key))
+      .map(([key, tag]) => ({ tag, rows: store.getRankings(key, topN) }))
+      .filter(group => group.rows.length > 0);
+
+    const allCryptoRows = [...upRows, ...downRows, ...maGroups.flatMap(group => group.rows)];
+    const symW = Math.min(8, Math.max(6, ...allCryptoRows.map(row => stripUsdt(row.symbol).length)));
+    const pctW = Math.max(7, ...allCryptoRows.map(row => `${formatSigned(row.value)}%`.length));
+    const priceW = Math.max(7, ...allCryptoRows.map(row => formatCompactPrice(row.price).length));
+
+    const formatCryptoRow = (row: RankingRow): string => {
+      const sym = stripUsdt(row.symbol).slice(0, symW).padEnd(symW);
+      const pct = `${formatSigned(row.value)}%`.padStart(pctW);
+      const prc = formatCompactPrice(row.price).padStart(priceW);
+      return `${sym} ${pct}  ${prc}`;
+    };
+
+    if (upRows.length > 0 || downRows.length > 0) {
+      const tableLines: string[] = [];
+      if (upRows.length > 0) tableLines.push(...upRows.map(formatCryptoRow));
+      if (upRows.length > 0 && downRows.length > 0) {
+        tableLines.push("-".repeat(symW + 1 + pctW + 2 + priceW));
+      }
+      if (downRows.length > 0) tableLines.push(...downRows.map(formatCryptoRow));
+      blocks.push(`**🔥 24H 涨跌 TOP ${topN}**\n\`\`\`\n${tableLines.join("\n")}\n\`\`\``);
+    }
+
+    if (maGroups.length > 0) {
+      const maLines: string[] = [];
+      const divider = "-".repeat(4 + symW + 1 + pctW + 2 + priceW);
+      maGroups.forEach((group, groupIndex) => {
+        if (groupIndex > 0) maLines.push(divider);
+        group.rows.forEach((row, rowIndex) => {
+          const prefix = rowIndex === 0 ? group.tag.padEnd(4) : "    ";
+          maLines.push(`${prefix}${formatCryptoRow(row)}`);
+        });
+      });
+      blocks.push(`**📐 MA60 偏离 TOP ${topN}**\n\`\`\`\n${maLines.join("\n")}\n\`\`\``);
+    }
+  }
+
+  if (config.watchlist.enabled) {
+    const wlTicks = config.watchlist.items
+      .filter(item => item.enabled)
+      .map(item => store.getWatchlistTick?.(item.symbol) ?? store.getTick(item.symbol))
+      .filter((tick): tick is DaemonTick => Boolean(tick));
+
+    if (wlTicks.length > 0) {
+      const prepared = wlTicks.map(tick => {
+        const code = stripUsdt(tick.symbol).slice(0, 7);
+        const price = formatCompactPrice(tick.price);
+        const dayPct = `${formatSigned(tick.change_24h)}%`;
+        const isIdle = (tick.change_1m === 0 || tick.change_1m === undefined)
+          && (tick.change_15m === 0 || tick.change_15m === undefined);
+        const m15Pct = !isIdle && typeof tick.change_15m === "number" ? `${formatSigned(tick.change_15m)}%` : "--";
+        const rawLabel = compactWatchlistLabel(tick.display_name);
+        const label = rawLabel && rawLabel.toUpperCase() !== code.toUpperCase() ? rawLabel : "";
+        return { code, price, dayPct, m15Pct, label };
+      });
+      const codeW = Math.max(4, ...prepared.map(item => item.code.length));
+      const priceW = Math.max(6, ...prepared.map(item => item.price.length));
+      const dayW = Math.max(6, ...prepared.map(item => item.dayPct.length));
+      const m15W = Math.max(3, ...prepared.map(item => item.m15Pct.length));
+      const wlLines = prepared.map(item => {
+        const base = `${item.code.padEnd(codeW)} ${item.price.padStart(priceW)} ${item.dayPct.padStart(dayW)} ${item.m15Pct.padStart(m15W)}`;
+        return item.label ? `${base} ${item.label}` : base;
+      });
+      blocks.push(`**👀 自选快照 (现价 / 今日 / 15m)**\n\`\`\`\n${wlLines.join("\n")}\n\`\`\``);
+    }
+  }
+
+  return { title, message: blocks.join("\n\n") };
 }
 
 export function formatDesktopRankingSummary(store: BinanceMarketStore, settings: WatchlistSettings): string {
