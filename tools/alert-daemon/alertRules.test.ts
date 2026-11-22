@@ -91,4 +91,51 @@ const gradualDrop = watchlistInstant.evaluate(wlTick("MU", 98.8));
 assert.equal(gradualDrop?.type, "instant_move");
 assert.ok((gradualDrop?.value ?? 0) <= -1.1, "gradual move crossing threshold should alert immediately");
 
+// Strict 20-minute per-symbol cooldown (unified direction, no step bypass, shared across binance/watchlist)
+const strictConfig = {
+  ...config,
+  cooldown: {
+    effective_base_seconds: 1200,
+    same_direction_step_percent: 0,
+    max_alerts_per_symbol_per_10min: 1,
+    separate_up_down: false,
+  },
+} as EffectiveDaemonConfig;
+const strictRule = new InstantMoveRule(strictConfig);
+const t0 = 1_700_000_000_000;
+assert.equal(strictRule.evaluate(tick(100), t0), null);
+const firstHit = strictRule.evaluate(tick(104), t0 + 10_000);
+assert.equal(firstHit?.type, "instant_move", "initial move should trigger");
+assert.equal(strictRule.evaluate(tick(109), t0 + 40_000), null, "same-direction move within 20m must be blocked");
+assert.equal(strictRule.evaluate(tick(98), t0 + 70_000), null, "opposite-direction move within 20m must be blocked");
+// Watchlist tick on the same symbol must also share the 20-minute cooldown
+assert.equal(strictRule.evaluate(wlTick("BTC/USDT", 100), t0 + 80_000), null);
+assert.equal(strictRule.evaluate(wlTick("BTC/USDT", 102), t0 + 95_000), null);
+assert.equal(strictRule.evaluate(wlTick("BTC/USDT", 102.5), t0 + 110_000), null, "watchlist alert for same symbol within 20m must be blocked");
+// Different symbol still alerts independently
+assert.equal(strictRule.evaluate(tick(200, { symbol: "ETH/USDT" }), t0 + 120_000), null);
+const otherSymbolHit = strictRule.evaluate(tick(208, { symbol: "ETH/USDT" }), t0 + 130_000);
+assert.equal(otherSymbolHit?.symbol, "ETH/USDT", "different symbol should not be blocked");
+// After 20 minutes (1200s), the original symbol can trigger again
+assert.equal(strictRule.evaluate(tick(100), t0 + 1_215_000), null);
+const afterCooldown = strictRule.evaluate(tick(104), t0 + 1_225_000);
+assert.equal(afterCooldown?.type, "instant_move", "same symbol should alert again once 20m cooldown passes");
+
+// Regression test: when same_direction_step_percent > 0, cooldown bypass requires >= threshold + step
+const steppedConfig = {
+  ...config,
+  cooldown: {
+    effective_base_seconds: 1200,
+    same_direction_step_percent: 2,
+    max_alerts_per_symbol_per_10min: 6,
+    separate_up_down: false,
+  },
+} as EffectiveDaemonConfig;
+const steppedRule = new InstantMoveRule(steppedConfig);
+assert.equal(steppedRule.evaluate(tick(100), t0), null);
+assert.equal(steppedRule.evaluate(tick(103.5), t0 + 5_000)?.type, "instant_move");
+assert.equal(steppedRule.evaluate(tick(107.2), t0 + 15_000), null, "+3.57% within cooldown must not bypass when threshold+step=5%");
+const bigBreakout = steppedRule.evaluate(tick(109.5), t0 + 25_000);
+assert.equal(bigBreakout?.type, "instant_move", "+5.8% (>= threshold 3% + step 2%) should bypass cooldown");
+
 console.log("alert rule tests passed");

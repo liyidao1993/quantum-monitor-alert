@@ -113,6 +113,18 @@ async function main(): Promise<void> {
       threshold_percent: config.instant_move.effective_threshold_percent,
       watchlist_threshold_percent: config.instant_move.effective_watchlist_threshold_percent,
     },
+    cooldown: {
+      base_seconds: config.cooldown.effective_base_seconds,
+      same_direction_step_percent: config.cooldown.same_direction_step_percent,
+      separate_up_down: config.cooldown.separate_up_down,
+      max_alerts_per_symbol_per_10min: config.cooldown.max_alerts_per_symbol_per_10min,
+    },
+    ma60_alerts: {
+      enabled: config.ma60_alerts.enabled,
+      cooldown_seconds: config.ma60_alerts.cooldown_seconds,
+      same_direction_step_percent: config.ma60_alerts.same_direction_step_percent,
+      intervals: config.ma60_alerts.intervals,
+    },
     watchlist_enabled: config.watchlist.enabled,
     watchlist_items: config.watchlist.items.filter(item => item.enabled).map(item => item.symbol),
     telegram_enabled: config.telegram.enabled && telegram.enabled,

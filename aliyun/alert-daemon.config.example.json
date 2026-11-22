@@ -12,14 +12,14 @@
     "watchlist_threshold_percent": 1
   },
   "cooldown": {
-    "base_seconds": 0,
-    "same_direction_step_percent": 2,
-    "max_alerts_per_symbol_per_10min": 6,
-    "separate_up_down": true
+    "base_seconds": 1200,
+    "same_direction_step_percent": 0,
+    "max_alerts_per_symbol_per_10min": 1,
+    "separate_up_down": false
   },
   "ma60_alerts": {
-    "enabled": false,
-    "cooldown_seconds": 300,
+    "enabled": true,
+    "cooldown_seconds": 1200,
     "same_direction_step_percent": 3,
     "intervals": {
       "1m": {

@@ -42,11 +42,11 @@ export class InstantMoveRule {
 
   constructor(private readonly config: EffectiveDaemonConfig) {}
 
-  evaluate(tick: DaemonTick): DaemonAlert | null {
+  evaluate(tick: DaemonTick, nowMs?: number): DaemonAlert | null {
     if (!this.config.enabled || !this.config.instant_move.enabled) return null;
     if (!Number.isFinite(tick.price) || tick.price <= 0) return null;
-    const now = Math.max(Date.now(), this.lastEvaluationAt + 1);
-    this.lastEvaluationAt = now;
+    const now = nowMs !== undefined ? nowMs : Math.max(Date.now(), this.lastEvaluationAt + 1);
+    this.lastEvaluationAt = Math.max(this.lastEvaluationAt, now);
     const threshold = this.getThresholdForTick(tick);
     const ruleKey = tick.origin === "watchlist" ? `wl:${tick.symbol}` : tick.symbol;
     const window = this.windows.get(ruleKey) ?? [];
@@ -84,7 +84,7 @@ export class InstantMoveRule {
 
     const move = detectMove(window);
     if (!move || Math.abs(move.movePercent) < threshold) return null;
-    if (!this.canRaise(ruleKey, move, threshold, now)) return null;
+    if (!this.canRaise(tick.symbol, move, threshold, now)) return null;
 
     // Reset sliding window to the current trigger price as the new anchor point,
     // preventing the same price wave from re-triggering as old points slide out.
@@ -127,9 +127,9 @@ export class InstantMoveRule {
     const cooldownMs = this.config.cooldown.effective_base_seconds * 1000;
     const hasNewExtreme = !record || move.extremeTs > record.lastExtremeTs;
     const cooldownPassed = !record || now - record.lastAt >= cooldownMs;
-    // Since the window resets to the trigger price after each alert, absMove in a
-    // subsequent evaluation is already the incremental move from the previous trigger price.
-    const steppedBeyond = Boolean(record && step > 0 && absMove >= Math.max(threshold, step));
+    // Since the window resets to the trigger price after each alert, an early
+    // cooldown bypass requires exceeding the base threshold by at least `step`.
+    const steppedBeyond = Boolean(record && step > 0 && absMove >= threshold + step);
 
     if (!hasNewExtreme) return false;
     if (!cooldownPassed && !steppedBeyond) return false;
