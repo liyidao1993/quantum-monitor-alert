@@ -4,12 +4,15 @@ import type { AppSettings } from "../../Quantum_Monitor_System/4_Shared_Types/st
 
 export type RankingSection = "change_up" | "change_down" | "ma60_1m" | "ma60_15m" | "ma60_1d";
 export type Severity = "info" | "warning" | "critical";
-export type WatchlistMarket = "Futures_Global" | "Stocks_US" | "Futures_CN" | "Crypto_Binance";
+export type WatchlistMarket = "Futures_Global" | "Stocks_US" | "Stocks_CN" | "Futures_CN" | "Crypto_Binance";
+export type WatchlistGroup = "index_cn" | "index_us";
 
 export interface WatchlistItemSettings {
   symbol: string;
   market: WatchlistMarket;
   label?: string;
+  group?: WatchlistGroup;
+  alert_enabled?: boolean;
   enabled: boolean;
 }
 
@@ -345,12 +348,18 @@ function normalizeWatchlistItem(item: WatchlistItemSettings): WatchlistItemSetti
     symbol,
     market,
     label: typeof item.label === "string" && item.label.trim() ? item.label.trim() : undefined,
+    group: isWatchlistGroup(item.group) ? item.group : undefined,
+    alert_enabled: item.alert_enabled === false ? false : undefined,
     enabled: item.enabled !== false,
   };
 }
 
+function isWatchlistGroup(value: unknown): value is WatchlistGroup {
+  return value === "index_cn" || value === "index_us";
+}
+
 function isWatchlistMarket(value: string): value is WatchlistMarket {
-  return value === "Futures_Global" || value === "Stocks_US" || value === "Futures_CN" || value === "Crypto_Binance";
+  return value === "Futures_Global" || value === "Stocks_US" || value === "Stocks_CN" || value === "Futures_CN" || value === "Crypto_Binance";
 }
 
 function deepMerge<T>(base: T, override: Partial<T>): T {

@@ -7,6 +7,7 @@ export interface UsStockCandle {
   low?: number;
   close: number;
   volume?: number;
+  previousClose?: number;
 }
 
 export interface IUsStocksApiClient {

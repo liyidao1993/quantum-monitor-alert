@@ -45,14 +45,17 @@ export function formatTelegramRankingBroadcast(store: BinanceMarketStore, sectio
 
 export function formatWatchlistBroadcast(store: BinanceMarketStore, settings: WatchlistSettings): string {
   if (!settings.enabled) return "";
-  const rows = settings.items
-    .filter(item => item.enabled)
-    .map(item => store.getWatchlistTick?.(item.symbol) ?? store.getTick(item.symbol))
-    .filter((tick): tick is DaemonTick => Boolean(tick));
-  if (rows.length === 0) return "";
+  const { cnIndices, usIndices, regular } = partitionWatchlistTicks(store, settings);
+  if (cnIndices.length === 0 && usIndices.length === 0 && regular.length === 0) return "";
 
   const lines = ["[轻量监控] 行情快照"];
-  for (const tick of rows) {
+  if (cnIndices.length > 0) {
+    lines.push(`A股指数：${formatInlineIndexRow(cnIndices)}`);
+  }
+  if (usIndices.length > 0) {
+    lines.push(`美股指数：${formatInlineIndexRow(usIndices)}`);
+  }
+  for (const tick of regular) {
     lines.push(formatWatchlistRow(tick));
   }
   return lines.join("\n");
@@ -60,23 +63,29 @@ export function formatWatchlistBroadcast(store: BinanceMarketStore, settings: Wa
 
 export function formatTelegramWatchlistBroadcast(store: BinanceMarketStore, settings: WatchlistSettings): string {
   if (!settings.enabled) return "";
-  const rows = settings.items
-    .filter(item => item.enabled)
-    .map(item => store.getWatchlistTick?.(item.symbol) ?? store.getTick(item.symbol))
-    .filter((tick): tick is DaemonTick => Boolean(tick));
-  if (rows.length === 0) return "";
+  const { cnIndices, usIndices, regular } = partitionWatchlistTicks(store, settings);
+  if (cnIndices.length === 0 && usIndices.length === 0 && regular.length === 0) return "";
 
-  return [
-    "# 👀 自选行情",
-    "| 标的 | 现价 | 今日 | 1m | 15m |",
-    "|---|---:|---:|---:|---:|",
-    ...rows.map(tick => {
-      const name = tick.display_name && tick.display_name !== tick.symbol
-        ? `${tick.display_name} (${tick.symbol})`
-        : tick.symbol;
-      return `| ${escapeRichCell(name)} | ${formatPrice(tick.price)} | ${formatSigned(tick.change_24h)}% | ${formatOptionalChange(tick.change_1m)} | ${formatOptionalChange(tick.change_15m)} |`;
-    }),
-  ].join("\n");
+  const parts = ["# 👀 自选行情"];
+  const indexSummary: string[] = [];
+  if (cnIndices.length > 0) indexSummary.push(`**A股指数**：${formatInlineIndexRow(cnIndices)}`);
+  if (usIndices.length > 0) indexSummary.push(`**美股指数**：${formatInlineIndexRow(usIndices)}`);
+  if (indexSummary.length > 0) {
+    parts.push(indexSummary.join("\n"));
+  }
+  if (regular.length > 0) {
+    parts.push([
+      "| 标的 | 现价 | 今日 | 1m | 15m |",
+      "|---|---:|---:|---:|---:|",
+      ...regular.map(tick => {
+        const name = tick.display_name && tick.display_name !== tick.symbol
+          ? `${tick.display_name} (${tick.symbol})`
+          : tick.symbol;
+        return `| ${escapeRichCell(name)} | ${formatPrice(tick.price)} | ${formatSigned(tick.change_24h)}% | ${formatOptionalChange(tick.change_1m)} | ${formatOptionalChange(tick.change_15m)} |`;
+      }),
+    ].join("\n"));
+  }
+  return parts.join("\n\n");
 }
 
 export function buildNtfyBroadcastPayload(
@@ -141,13 +150,12 @@ export function buildNtfyBroadcastPayload(
   }
 
   if (config.watchlist.enabled) {
-    const wlTicks = config.watchlist.items
-      .filter(item => item.enabled)
-      .map(item => store.getWatchlistTick?.(item.symbol) ?? store.getTick(item.symbol))
-      .filter((tick): tick is DaemonTick => Boolean(tick));
+    const { cnIndices, usIndices, regular } = partitionWatchlistTicks(store, config.watchlist);
+    const indexLines = formatCompactIndexStrip([cnIndices, usIndices]);
+    const wlLines: string[] = [];
 
-    if (wlTicks.length > 0) {
-      const prepared = wlTicks.map(tick => {
+    if (regular.length > 0) {
+      const prepared = regular.map(tick => {
         const code = stripUsdt(tick.symbol).slice(0, 7);
         const price = formatCompactPrice(tick.price);
         const dayPct = `${formatSigned(tick.change_24h)}%`;
@@ -162,11 +170,28 @@ export function buildNtfyBroadcastPayload(
       const priceW = Math.max(6, ...prepared.map(item => item.price.length));
       const dayW = Math.max(6, ...prepared.map(item => item.dayPct.length));
       const m15W = Math.max(3, ...prepared.map(item => item.m15Pct.length));
-      const wlLines = prepared.map(item => {
+      wlLines.push(...prepared.map(item => {
         const base = `${item.code.padEnd(codeW)} ${item.price.padStart(priceW)} ${item.dayPct.padStart(dayW)} ${item.m15Pct.padStart(m15W)}`;
         return item.label ? `${base} ${item.label}` : base;
-      });
-      blocks.push(`**👀 自选快照 (现价 / 今日 / 15m)**\n\`\`\`\n${wlLines.join("\n")}\n\`\`\``);
+      }));
+    }
+
+    if (indexLines.length > 0 || wlLines.length > 0) {
+      const combinedLines: string[] = [];
+      if (indexLines.length > 0) {
+        combinedLines.push(...indexLines);
+      }
+      if (indexLines.length > 0 && wlLines.length > 0) {
+        const dividerWidth = Math.max(
+          32,
+          Math.min(36, Math.max(...indexLines.map(displayWidth), ...wlLines.map(displayWidth))),
+        );
+        combinedLines.push("-".repeat(dividerWidth));
+      }
+      if (wlLines.length > 0) {
+        combinedLines.push(...wlLines);
+      }
+      blocks.push(`**👀 自选快照 (现价 / 今日 / 15m)**\n\`\`\`\n${combinedLines.join("\n")}\n\`\`\``);
     }
   }
 
@@ -290,6 +315,98 @@ function formatWatchlistRow(tick: DaemonTick): string {
     `今 ${formatSigned(tick.change_24h)}% / ` +
     `1m ${formatOptionalChange(tick.change_1m)} / ` +
     `15m ${formatOptionalChange(tick.change_15m)}`;
+}
+
+function partitionWatchlistTicks(
+  store: Pick<BinanceMarketStore, "getTick"> & Partial<Pick<BinanceMarketStore, "getWatchlistTick">>,
+  settings: WatchlistSettings,
+): { cnIndices: DaemonTick[]; usIndices: DaemonTick[]; regular: DaemonTick[] } {
+  const cnIndices: DaemonTick[] = [];
+  const usIndices: DaemonTick[] = [];
+  const regular: DaemonTick[] = [];
+  for (const item of settings.items) {
+    if (!item.enabled) continue;
+    const tick = store.getWatchlistTick?.(item.symbol) ?? store.getTick(item.symbol);
+    if (!tick) continue;
+    if (item.group === "index_cn") {
+      cnIndices.push(tick);
+    } else if (item.group === "index_us") {
+      usIndices.push(tick);
+    } else {
+      regular.push(tick);
+    }
+  }
+  return { cnIndices, usIndices, regular };
+}
+
+function formatCompactIndexStrip(groups: DaemonTick[][]): string[] {
+  const activeGroups = groups.filter(group => group.length > 0);
+  if (activeGroups.length === 0) return [];
+  const cellsByGroup = activeGroups.map(group =>
+    group.map(tick => ({
+      label: formatIndexShortLabel(tick),
+      value: `${formatIndexPoints(tick.price)} ${formatSigned1Pct(tick.change_24h)}`,
+    })),
+  );
+  const colCount = Math.max(...cellsByGroup.map(cells => cells.length));
+  const colWidths = Array.from({ length: colCount }, (_, colIndex) =>
+    Math.max(
+      8,
+      ...cellsByGroup.map(cells => {
+        const cell = cells[colIndex];
+        return cell ? Math.max(displayWidth(cell.label), cell.value.length) : 0;
+      }),
+    ),
+  );
+  const totalWith2 = colWidths.reduce((sum, width) => sum + width, 0) + Math.max(0, colCount - 1) * 2;
+  const gap = totalWith2 <= 36 ? "  " : " ";
+
+  const lines: string[] = [];
+  for (const cells of cellsByGroup) {
+    const labelLine = cells
+      .map((cell, idx) => idx === cells.length - 1 ? cell.label : padEndDisplay(cell.label, colWidths[idx]))
+      .join(gap);
+    const valueLine = cells
+      .map((cell, idx) => idx === cells.length - 1 ? cell.value : cell.value.padEnd(colWidths[idx]))
+      .join(gap);
+    lines.push(labelLine, valueLine);
+  }
+  return lines;
+}
+
+function formatInlineIndexRow(ticks: DaemonTick[]): string {
+  return ticks
+    .map(tick => `${formatIndexShortLabel(tick)} ${formatIndexPoints(tick.price)} (${formatSigned(tick.change_24h)}%)`)
+    .join(" | ");
+}
+
+function formatIndexShortLabel(tick: DaemonTick): string {
+  const compact = compactWatchlistLabel(tick.display_name);
+  return compact || stripUsdt(tick.symbol);
+}
+
+function formatIndexPoints(value: number): string {
+  if (!Number.isFinite(value)) return "--";
+  if (Math.abs(value) >= 100) return String(Math.round(value));
+  return formatCompactPrice(value);
+}
+
+function formatSigned1Pct(value: number): string {
+  if (!Number.isFinite(value)) return "--";
+  const normalized = Math.abs(value) < 0.05 ? 0 : value;
+  return `${normalized >= 0 ? "+" : ""}${normalized.toFixed(1)}%`;
+}
+
+function displayWidth(text: string): number {
+  let width = 0;
+  for (const char of text) {
+    width += char.charCodeAt(0) > 0x7f ? 2 : 1;
+  }
+  return width;
+}
+
+function padEndDisplay(text: string, targetWidth: number): string {
+  return text + " ".repeat(Math.max(0, targetWidth - displayWidth(text)));
 }
 
 function formatOptionalChange(value: number | undefined): string {

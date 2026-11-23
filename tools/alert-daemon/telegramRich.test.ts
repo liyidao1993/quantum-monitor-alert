@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import type { DaemonTick } from "./marketStore.js";
 import { buildFloatingAlertMarkdown, buildNtfyAlertPayload, buildNtfyAlertTitle, buildTelegramAlertMarkdown } from "./notifiers.js";
 import { buildNtfyBroadcastPayload, formatAlertContext, formatTelegramRankingBroadcast, formatTelegramWatchlistBroadcast } from "./ranking.js";
 
@@ -128,5 +129,55 @@ assert.match(ntfyBroadcast.message, /\*\*🔥 24H 涨跌 TOP 3\*\*/);
 assert.match(ntfyBroadcast.message, /\*\*📐 MA60 偏离 TOP 3\*\*/);
 assert.match(ntfyBroadcast.message, /\*\*👀 自选快照 \(现价 \/ 今日 \/ 15m\)\*\*/);
 assert.doesNotMatch(ntfyBroadcast.message, /\/USDT/);
+
+// Condensed CN & US index strip placed at the top of watchlist snapshot for cross-reference
+const indexTicks = new Map<string, DaemonTick>([
+  ...ticks.entries(),
+  ["SH000001", { origin: "watchlist" as const, symbol: "SH000001", display_name: "上证", price: 3499.91, change_24h: -0.96, updated_at: new Date().toISOString() }],
+  ["SZ399006", { origin: "watchlist" as const, symbol: "SZ399006", display_name: "创业", price: 2239.11, change_24h: 1.22, updated_at: new Date().toISOString() }],
+  ["SH000688", { origin: "watchlist" as const, symbol: "SH000688", display_name: "科创", price: 1198.46, change_24h: -2.65, updated_at: new Date().toISOString() }],
+  ["^GSPC", { origin: "watchlist" as const, symbol: "^GSPC", display_name: "标普", price: 6910.39, change_24h: -3.70, updated_at: new Date().toISOString() }],
+  ["^IXIC", { origin: "watchlist" as const, symbol: "^IXIC", display_name: "纳指", price: 22617.73, change_24h: -5.28, updated_at: new Date().toISOString() }],
+  ["^DJI", { origin: "watchlist" as const, symbol: "^DJI", display_name: "道指", price: 48147.33, change_24h: -1.93, updated_at: new Date().toISOString() }],
+]);
+const indexStore = {
+  getRankings: () => rankingRows,
+  getTick: (symbol: string) => indexTicks.get(symbol),
+  getWatchlistTick: (symbol: string) => indexTicks.get(symbol),
+} as never;
+const indexNtfy = buildNtfyBroadcastPayload(indexStore, {
+  ranking_broadcast: {
+    enabled: true,
+    log_enabled: true,
+    broadcast_on_startup: true,
+    telegram_enabled: false,
+    weixin_enabled: false,
+    ntfy_enabled: true,
+    desktop_enabled: false,
+    interval_seconds: 600,
+    top_n: 3,
+    sections: ["change_up", "change_down"],
+  },
+  watchlist: {
+    enabled: true,
+    price_seconds: 15,
+    items: [
+      { symbol: "SH000001", market: "Stocks_CN", label: "上证", group: "index_cn", alert_enabled: false, enabled: true },
+      { symbol: "SZ399006", market: "Stocks_CN", label: "创业", group: "index_cn", alert_enabled: false, enabled: true },
+      { symbol: "SH000688", market: "Stocks_CN", label: "科创", group: "index_cn", alert_enabled: false, enabled: true },
+      { symbol: "^GSPC", market: "Stocks_US", label: "标普", group: "index_us", alert_enabled: false, enabled: true },
+      { symbol: "^IXIC", market: "Stocks_US", label: "纳指", group: "index_us", alert_enabled: false, enabled: true },
+      { symbol: "^DJI", market: "Stocks_US", label: "道指", group: "index_us", alert_enabled: false, enabled: true },
+      { symbol: "NVDA", market: "Stocks_US", label: "英伟达", enabled: true },
+    ],
+  },
+});
+const cnPos = indexNtfy.message.indexOf("上证");
+const usPos = indexNtfy.message.indexOf("标普");
+const nvdaPos = indexNtfy.message.indexOf("NVDA");
+assert.ok(cnPos > 0 && usPos > cnPos && nvdaPos > usPos, "CN indices must appear first, US indices below CN, and regular watchlist below divider");
+assert.match(indexNtfy.message, /3500 -1\.0% {1,2}2239 \+1\.2% {1,3}1198 -2\.6%/);
+assert.match(indexNtfy.message, /6910 -3\.7% {1,2}22618 -5\.3% {1,2}48147 -1\.9%/);
+assert.doesNotMatch(indexNtfy.message, /SH000001|\^GSPC/, "condensed index strip must omit raw ticker symbols");
 
 console.log("telegram rich formatting tests passed");

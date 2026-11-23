@@ -14,6 +14,7 @@ interface YahooChartResponse {
       meta?: {
         regularMarketPrice?: number;
         regularMarketTime?: number;
+        chartPreviousClose?: number;
       };
       timestamp?: number[];
       indicators?: {
@@ -71,7 +72,18 @@ export class YahooUsStocksApiClient implements IUsStocksApiClient {
       });
     }
 
-    return candles.slice(-limit);
+    const sliced = candles.slice(-limit);
+    const chartPreviousClose = typeof result?.meta?.chartPreviousClose === 'number' && result.meta.chartPreviousClose > 0
+      ? result.meta.chartPreviousClose
+      : undefined;
+    if (interval === '1m' && limit <= 10 && chartPreviousClose !== undefined && sliced.length > 0) {
+      sliced[sliced.length - 1] = {
+        ...sliced[sliced.length - 1],
+        previousClose: chartPreviousClose,
+      };
+    }
+
+    return sliced;
   }
 }
 

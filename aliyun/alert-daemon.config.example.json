@@ -59,6 +59,54 @@
     "price_seconds": 15,
     "items": [
       {
+        "symbol": "SH000001",
+        "market": "Stocks_CN",
+        "label": "上证",
+        "group": "index_cn",
+        "alert_enabled": false,
+        "enabled": true
+      },
+      {
+        "symbol": "SZ399006",
+        "market": "Stocks_CN",
+        "label": "创业",
+        "group": "index_cn",
+        "alert_enabled": false,
+        "enabled": true
+      },
+      {
+        "symbol": "SH000688",
+        "market": "Stocks_CN",
+        "label": "科创",
+        "group": "index_cn",
+        "alert_enabled": false,
+        "enabled": true
+      },
+      {
+        "symbol": "^GSPC",
+        "market": "Stocks_US",
+        "label": "标普",
+        "group": "index_us",
+        "alert_enabled": false,
+        "enabled": true
+      },
+      {
+        "symbol": "^IXIC",
+        "market": "Stocks_US",
+        "label": "纳指",
+        "group": "index_us",
+        "alert_enabled": false,
+        "enabled": true
+      },
+      {
+        "symbol": "^DJI",
+        "market": "Stocks_US",
+        "label": "道指",
+        "group": "index_us",
+        "alert_enabled": false,
+        "enabled": true
+      },
+      {
         "symbol": "BTCUSDT",
         "market": "Crypto_Binance",
         "label": "比特币",

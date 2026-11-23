@@ -5,6 +5,7 @@ import { resolveDisplayName } from "../../Quantum_Monitor_System/4_Shared_Types/
 import type { IBinanceApiClient } from "../../Quantum_Monitor_System/2_Market_Modules/Crypto_Binance/api_client/IBinanceApiClient.js";
 import { SinaFuturesApiClient } from "../../Quantum_Monitor_System/2_Market_Modules/Futures_CN/api_client/SinaFuturesApiClient.js";
 import { YahooFuturesApiClient } from "../../Quantum_Monitor_System/2_Market_Modules/Futures_Global/api_client/YahooFuturesApiClient.js";
+import type { EastMoneyIndexQuote } from "../../Quantum_Monitor_System/2_Market_Modules/Stocks_CN/api_client/EastMoneyStocksCnHeatApiClient.js";
 import { YahooUsStocksApiClient } from "../../Quantum_Monitor_System/2_Market_Modules/Stocks_US/api_client/YahooUsStocksApiClient.js";
 import type { BinanceMarketStore, DaemonTick } from "./marketStore.js";
 import type { DaemonLogger } from "./logger.js";
@@ -30,6 +31,7 @@ interface WatchlistHistoryFile {
 interface WatchlistClients {
   futuresGlobal: YahooFuturesApiClient;
   stocksUs: YahooUsStocksApiClient;
+  stocksCn?: { getQuote(symbol: string): Promise<EastMoneyIndexQuote | null> };
   futuresCn: SinaFuturesApiClient;
   binance?: IBinanceApiClient;
 }
@@ -37,6 +39,8 @@ interface WatchlistClients {
 interface PriceSample {
   price: number;
   candleTimeMs?: number;
+  previousClose?: number;
+  changePercent?: number;
 }
 
 interface FailureBackoff {
@@ -124,7 +128,9 @@ export class WatchlistMonitor {
           this.failureStates.delete(item.symbol);
           if (!tick) return;
           this.store.upsertExternalTick(tick);
-          onTick(tick);
+          if (item.alert_enabled !== false) {
+            onTick(tick);
+          }
         } catch (err) {
           this.recordFailure(item.symbol, err);
         }
@@ -179,14 +185,20 @@ export class WatchlistMonitor {
     row.history.push({ ts: now, price });
     this.pruneHistory(row.history, now);
 
-    const referenceClose = await this.getReferenceClose(item, mapping.displaySymbol);
+    const referenceClose = sample.previousClose && sample.previousClose > 0
+      ? { value: sample.previousClose, updatedAt: now }
+      : await this.getReferenceClose(item, mapping.displaySymbol);
     const referenceCloseValue = referenceClose?.value;
-    const change24h = referenceCloseValue && referenceCloseValue > 0
-      ? roundPercent(((price - referenceCloseValue) / referenceCloseValue) * 100)
-      : 0;
+    const change24h = sample.changePercent !== undefined && Number.isFinite(sample.changePercent)
+      ? roundPercent(sample.changePercent)
+      : (referenceCloseValue && referenceCloseValue > 0
+        ? roundPercent(((price - referenceCloseValue) / referenceCloseValue) * 100)
+        : 0);
     const change1m = calculateWindowChange(row.history, 1 * 60 * 1000, price, now);
     const localChange15m = calculateWindowChange(row.history, 15 * 60 * 1000, price, now);
-    const change15m = localChange15m ?? await this.fetchIntervalChange(item, mapping.displaySymbol, price, now);
+    const change15m = localChange15m ?? (item.market === "Stocks_CN"
+      ? undefined
+      : await this.fetchIntervalChange(item, mapping.displaySymbol, price, now));
 
     row.referenceClose = referenceClose ?? row.referenceClose;
     this.history.set(mapping.displaySymbol, row);
@@ -215,10 +227,38 @@ export class WatchlistMonitor {
       const latest = candles.at(-1);
       return { price: latest?.close ?? NaN, candleTimeMs: parseCandleTime(latest?.time) };
     }
+    if (item.market === "Stocks_CN") {
+      if (this.clients.stocksCn) {
+        try {
+          const quote = await this.clients.stocksCn.getQuote(item.symbol);
+          if (quote && quote.price > 0) {
+            return {
+              price: quote.price,
+              previousClose: quote.previousClose,
+              changePercent: quote.changePercent,
+            };
+          }
+        } catch (err) {
+          this.logger.debug(`EastMoney quote failed for ${item.symbol}; falling back to Yahoo`, err);
+        }
+      }
+      const yahooSym = toYahooCnSymbol(item.symbol);
+      const candles = await this.clients.stocksUs.getKlines(yahooSym, "1m", 2);
+      const latest = candles.at(-1);
+      return {
+        price: latest?.close ?? NaN,
+        candleTimeMs: parseCandleTime(latest?.time),
+        previousClose: latest?.previousClose,
+      };
+    }
     if (item.market === "Stocks_US") {
       const candles = await this.clients.stocksUs.getKlines(item.symbol, "1m", 2);
       const latest = candles.at(-1);
-      return { price: latest?.close ?? NaN, candleTimeMs: parseCandleTime(latest?.time) };
+      return {
+        price: latest?.close ?? NaN,
+        candleTimeMs: parseCandleTime(latest?.time),
+        previousClose: latest?.previousClose,
+      };
     }
     if (Date.now() >= this.sinaQuoteBlockedUntil) {
       try {
@@ -297,6 +337,10 @@ export class WatchlistMonitor {
         if (previous && previous > 0) return { value: previous, updatedAt: Date.now() };
       } else if (item.market === "Futures_Global") {
         const candles = await this.clients.futuresGlobal.getKlines(item.symbol, "1d", 2);
+        const previous = candles.at(-2)?.close ?? candles.at(-1)?.close;
+        if (previous && previous > 0) return { value: previous, updatedAt: Date.now() };
+      } else if (item.market === "Stocks_CN") {
+        const candles = await this.clients.stocksUs.getKlines(toYahooCnSymbol(item.symbol), "1d", 2);
         const previous = candles.at(-2)?.close ?? candles.at(-1)?.close;
         if (previous && previous > 0) return { value: previous, updatedAt: Date.now() };
       } else {
@@ -398,6 +442,14 @@ function parseCandleTime(time: string | undefined): number | undefined {
 
 function roundPercent(value: number): number {
   return Number(value.toFixed(3));
+}
+
+function toYahooCnSymbol(symbol: string): string {
+  const upper = symbol.trim().toUpperCase();
+  if (upper.endsWith(".SS") || upper.endsWith(".SZ")) return upper;
+  if (upper.startsWith("SH")) return `${upper.slice(2)}.SS`;
+  if (upper.startsWith("SZ")) return `${upper.slice(2)}.SZ`;
+  return upper;
 }
 
 function sleep(ms: number): Promise<void> {

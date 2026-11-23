@@ -215,4 +215,40 @@ assert.equal(samsungTick?.symbol, "SAMSUNG/USDT");
 assert.equal(samsungTick?.display_name, "三星电子");
 assert.equal(samsungTick?.price, 143.6);
 
+// Stocks_CN real-time EastMoney quote + alert_enabled=false suppresses onTick alerts while still storing tick
+const storedSymbols: string[] = [];
+const alertedSymbols: string[] = [];
+const cnIndexMonitor = new WatchlistMonitor(
+  { upsertExternalTick(t: { symbol: string }) { storedSymbols.push(t.symbol); } } as never,
+  {
+    enabled: true,
+    price_seconds: 15,
+    items: [
+      { symbol: "SH000001", market: "Stocks_CN", label: "上证", group: "index_cn", alert_enabled: false, enabled: true },
+      { symbol: "SZ399006", market: "Stocks_CN", label: "创业", group: "index_cn", alert_enabled: false, enabled: true },
+    ],
+  },
+  {
+    stocksUs: {
+      async getKlines(sym: string) {
+        assert.equal(sym, "399006.SZ", "fallback for SZ399006 must map to Yahoo .SZ ticker");
+        return [{ time: new Date().toISOString(), close: 2239.11, previousClose: 2212.13 }];
+      },
+    },
+    stocksCn: {
+      async getQuote(sym: string) {
+        if (sym === "SH000001") return { symbol: "SH000001", name: "上证指数", price: 3499.91, changePercent: -0.96, previousClose: 3533.79 };
+        throw new Error("EastMoney temporary outage");
+      },
+    },
+    futuresGlobal: { getKlines: async () => [] },
+    futuresCn: { getQuote: async () => null, getKlines: async () => [] },
+  } as never,
+  { warn() {}, debug() {} } as never,
+);
+(cnIndexMonitor as unknown as { running: boolean }).running = true;
+await (cnIndexMonitor as unknown as { refreshAll(cb: (t: { symbol: string }) => void): Promise<void> }).refreshAll(t => alertedSymbols.push(t.symbol));
+assert.deepEqual(storedSymbols.sort(), ["SH000001", "SZ399006"], "both EastMoney and Yahoo-fallback CN indices must be stored");
+assert.deepEqual(alertedSymbols, [], "alert_enabled=false items must not emit instant-move alert ticks");
+
 console.log("watchlist tests passed");

@@ -2,6 +2,7 @@ import path from "node:path";
 import { BinanceApiClient } from "../Quantum_Monitor_System/2_Market_Modules/Crypto_Binance/api_client/BinanceApiClient.js";
 import { SinaFuturesApiClient } from "../Quantum_Monitor_System/2_Market_Modules/Futures_CN/api_client/SinaFuturesApiClient.js";
 import { YahooFuturesApiClient } from "../Quantum_Monitor_System/2_Market_Modules/Futures_Global/api_client/YahooFuturesApiClient.js";
+import { EastMoneyStocksCnHeatApiClient } from "../Quantum_Monitor_System/2_Market_Modules/Stocks_CN/api_client/EastMoneyStocksCnHeatApiClient.js";
 import { YahooUsStocksApiClient } from "../Quantum_Monitor_System/2_Market_Modules/Stocks_US/api_client/YahooUsStocksApiClient.js";
 import type { MarketRefreshIntervalSettings } from "../Quantum_Monitor_System/4_Shared_Types/standard_models/marketTypes.js";
 import { appendContext, InstantMoveRule, Ma60DeviationRule, type DaemonAlert } from "./alert-daemon/alertRules.js";
@@ -72,6 +73,7 @@ async function main(): Promise<void> {
   const apiClient = new BinanceApiClient();
   const yahooFuturesClient = new YahooFuturesApiClient();
   const yahooStocksClient = new YahooUsStocksApiClient();
+  const eastMoneyStocksCnClient = new EastMoneyStocksCnHeatApiClient();
   const sinaFuturesClient = new SinaFuturesApiClient();
   const store = new BinanceMarketStore(apiClient, {
     limit: config.monitor.effective_top_volume,
@@ -85,6 +87,7 @@ async function main(): Promise<void> {
     {
       futuresGlobal: yahooFuturesClient,
       stocksUs: yahooStocksClient,
+      stocksCn: eastMoneyStocksCnClient,
       futuresCn: sinaFuturesClient,
       binance: apiClient,
     },

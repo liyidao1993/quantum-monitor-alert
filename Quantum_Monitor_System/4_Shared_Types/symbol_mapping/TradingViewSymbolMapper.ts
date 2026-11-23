@@ -1,8 +1,8 @@
 import type { MarketModuleName } from '../standard_models/marketTypes.js';
 
-export type SymbolMarket = Extract<MarketModuleName, 'Crypto_Binance' | 'Stocks_US' | 'Futures_CN' | 'Futures_Global'>;
+export type SymbolMarket = Extract<MarketModuleName, 'Crypto_Binance' | 'Stocks_CN' | 'Stocks_US' | 'Futures_CN' | 'Futures_Global'>;
 
-export type DataProvider = 'binance_futures' | 'sina_futures' | 'yahoo_finance';
+export type DataProvider = 'binance_futures' | 'sina_futures' | 'yahoo_finance' | 'eastmoney';
 
 export interface SymbolMappingResult {
   market: SymbolMarket;
@@ -52,6 +52,10 @@ export function mapMarketSymbol(input: string, market: SymbolMarket): SymbolMapp
 
   if (market === 'Futures_Global') {
     return mapGlobalFutureSymbol(normalized);
+  }
+
+  if (market === 'Stocks_CN') {
+    return mapCnStockSymbol(normalized);
   }
 
   if (market === 'Stocks_US') {
@@ -122,6 +126,33 @@ export function mapUsStockSymbol(input: string): SymbolMappingResult {
     tradingViewSymbol: exchange ? `${exchange}:${symbol}` : symbol,
     exchange,
     name: symbol,
+  };
+}
+
+export function mapCnStockSymbol(input: string): SymbolMappingResult {
+  const withoutExchange = input.includes(':') ? input.split(':').at(-1) ?? input : input;
+  const cleaned = withoutExchange.toUpperCase();
+  const displaySymbol = cleaned.endsWith('.SS')
+    ? `SH${cleaned.slice(0, -3)}`
+    : cleaned.endsWith('.SZ')
+      ? `SZ${cleaned.slice(0, -3)}`
+      : cleaned;
+  const exchange = displaySymbol.startsWith('SZ')
+    ? 'SZSE'
+    : displaySymbol.startsWith('BJ')
+      ? 'BSE'
+      : 'SSE';
+  const rawCode = displaySymbol.replace(/^(SH|SZ|BJ)/, '');
+
+  return {
+    market: 'Stocks_CN',
+    input,
+    displaySymbol,
+    dataProvider: 'eastmoney',
+    dataSymbol: displaySymbol,
+    tradingViewSymbol: `${exchange}:${rawCode}`,
+    exchange,
+    name: displaySymbol,
   };
 }
 

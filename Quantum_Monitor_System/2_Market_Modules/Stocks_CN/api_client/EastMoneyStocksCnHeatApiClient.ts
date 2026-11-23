@@ -34,6 +34,15 @@ interface EastMoneyStockRow {
   f10?: number | string;
   f12?: string;
   f14?: string;
+  f18?: number;
+}
+
+export interface EastMoneyIndexQuote {
+  symbol: string;
+  name?: string;
+  price: number;
+  changePercent?: number;
+  previousClose?: number;
 }
 
 interface EastMoneyHotRankRow {
@@ -121,6 +130,23 @@ export class EastMoneyStocksCnHeatApiClient implements IStocksCnHeatApiClient {
     });
   }
 
+  async getQuote(symbol: string): Promise<EastMoneyIndexQuote | null> {
+    const normalized = symbol.trim().toUpperCase();
+    const secid = eastMoneySecid(normalized);
+    if (!secid) return null;
+    const rows = await eastMoneyQuoteRequest(secid);
+    const row = rows[0];
+    const price = toNumber(row?.f2);
+    if (price === undefined || price <= 0) return null;
+    return {
+      symbol: normalized,
+      name: row?.f14 ? String(row.f14) : undefined,
+      price,
+      changePercent: toNumber(row?.f3),
+      previousClose: toNumber(row?.f18),
+    };
+  }
+
   private async getHotStockList(list: StocksCnHotStockItem['list'], fid: string, limit: number): Promise<StocksCnHotStockItem[]> {
     const json = await eastMoneyRequest<EastMoneyStockRow>({
       fid,
@@ -173,10 +199,11 @@ async function eastMoneyQuoteRequest(secids: string): Promise<EastMoneyStockRow[
   const url = new URL(EASTMONEY_ULIST);
   url.searchParams.set('fltt', '2');
   url.searchParams.set('invt', '2');
-  url.searchParams.set('fields', 'f12,f14,f2,f3');
+  url.searchParams.set('fields', 'f12,f14,f2,f3,f18');
   url.searchParams.set('secids', secids);
 
   const response = await fetch(url, {
+    signal: AbortSignal.timeout(10_000),
     headers: {
       Accept: 'application/json,text/plain,*/*',
       'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
