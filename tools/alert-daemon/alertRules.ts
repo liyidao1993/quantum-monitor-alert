@@ -53,7 +53,7 @@ export class InstantMoveRule {
     const windowMs = this.config.instant_move.effective_window_seconds * 1000;
     while (window.length > 0 && now - window[0].ts > windowMs) window.shift();
 
-    if (tick.origin === "watchlist" && window.length > 0) {
+    if (tick.origin === "watchlist" && this.config.instant_move.watchlist_confirm_spike !== false && window.length > 0) {
       const prev = window[window.length - 1];
       const deltaPct = ((tick.price - prev.price) / prev.price) * 100;
       const direction: "up" | "down" = deltaPct >= 0 ? "up" : "down";
@@ -126,7 +126,7 @@ export class InstantMoveRule {
     const step = this.config.cooldown.same_direction_step_percent;
     const cooldownMs = this.config.cooldown.effective_base_seconds * 1000;
     const hasNewExtreme = !record || move.extremeTs > record.lastExtremeTs;
-    const cooldownPassed = !record || now - record.lastAt >= cooldownMs;
+    const cooldownPassed = !record || cooldownMs <= 0 || now - record.lastAt >= cooldownMs;
     // Since the window resets to the trigger price after each alert, an early
     // cooldown bypass requires exceeding the base threshold by at least `step`.
     const steppedBeyond = Boolean(record && step > 0 && absMove >= threshold + step);
@@ -141,6 +141,7 @@ export class InstantMoveRule {
 
   private withinSymbolRateLimit(symbol: string, now: number): boolean {
     const max = this.config.cooldown.max_alerts_per_symbol_per_10min;
+    if (max <= 0) return true;
     const cutoff = now - 10 * 60 * 1000;
     const rows = (this.symbolAlertTimes.get(symbol) ?? []).filter(ts => ts >= cutoff);
     if (rows.length >= max) {

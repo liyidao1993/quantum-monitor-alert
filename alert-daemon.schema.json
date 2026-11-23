@@ -19,7 +19,8 @@
         "enabled": { "type": "boolean" },
         "window_seconds": { "type": "number", "minimum": 0 },
         "threshold_percent": { "type": "number", "minimum": 0 },
-        "watchlist_threshold_percent": { "type": "number", "minimum": 0 }
+        "watchlist_threshold_percent": { "type": "number", "minimum": 0 },
+        "watchlist_confirm_spike": { "type": "boolean" }
       }
     },
     "cooldown": {
@@ -27,7 +28,7 @@
       "properties": {
         "base_seconds": { "type": "number", "minimum": 0 },
         "same_direction_step_percent": { "type": "number", "minimum": 0 },
-        "max_alerts_per_symbol_per_10min": { "type": "number", "minimum": 1 },
+        "max_alerts_per_symbol_per_10min": { "type": "number", "minimum": 0 },
         "separate_up_down": { "type": "boolean" }
       }
     },

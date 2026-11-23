@@ -21,21 +21,21 @@
 ## 2. 监控与推送架构
 
 ### 行情监控范围
-1. **币安纯加密货币永续合约 Top 20**（自动按 24H 成交额每 4 小时动态刷新）：
+1. **币安纯加密货币永续合约 Top 30**（自动按 24H 成交额每 4 小时动态刷新）：
    - 主网 REST：`https://fapi.binance.com`
    - 主网行情流 WebSocket：**`wss://fstream.binance.com/market/stream`**（注意：旧路径 `/stream` 0 帧无数据，切勿改回）
    - 通过 `/fapi/v1/exchangeInfo` 正向过滤 `status=TRADING && contractType=PERPETUAL && underlyingType=COIN && quoteAsset=USDT`，自动隔离美股/商品 TradFi 合约与稳定币。
-   - **90 秒瞬时异动规则**：阈值 `3%`；触发后**立即清空滑动窗口**（以触发价为新起点），且严格执行**同币种 20 分钟最多触发 1 次**（`base_seconds=1200`、`separate_up_down=false`、`same_direction_step_percent=0`、`max_alerts_per_symbol_per_10min=1`，Binance 与 Watchlist 共享同币种冷却）。
+   - **90 秒瞬时异动规则**：阈值 `5%`；触发后**立即清空滑动窗口**（以触发价为新起点），且已**解除时间冷却与次数上限**（`base_seconds=0`、`max_alerts_per_symbol_per_10min=0`、`separate_up_down=true`）。
    - **MA60 偏离**：后台持续计算 `1m / 15m / 1d` 偏离并展示在 10 分钟定时播报中；主动 MA60 异动预警当前关闭（`ma60_alerts.enabled=false`）。
-2. **大盘指数浓缩对照区 + 固定自选 Watchlist（共 20 个标的，每 15 秒轮询）**：
-   - **A 股三大指数**（`Stocks_CN`，`group=index_cn`，`alert_enabled=false` 仅定期推送）：`SH000001`（上证）、`SZ399006`（创业）、`SH000688`（科创）；主通道走东方财富实时接口，异常自动回退 Yahoo Finance。
-   - **美股三大指数**（`Stocks_US`，`group=index_us`，`alert_enabled=false` 仅定期推送）：`^GSPC`（标普）、`^IXIC`（纳指）、`^DJI`（道指）；Yahoo `range=1d` 直取 `meta.chartPreviousClose` 保证昨收精度。
-   - **固定自选 14 个标的**（90 秒异动阈值 `1%`，同样遵守同币种 20 分钟冷却）：
+2. **大盘指数浓缩对照区 + 固定自选 Watchlist（共 20 个标的，每 15 秒轮询，全部开启实时异动）**：
+   - **A 股三大指数**（`Stocks_CN`，`group=index_cn`，`alert_enabled=true`）：`SH000001`（上证）、`SZ399006`（创业）、`SH000688`（科创）；主通道走东方财富实时接口，异常自动回退 Yahoo Finance。
+   - **美股三大指数**（`Stocks_US`，`group=index_us`，`alert_enabled=true`）：`^GSPC`（标普）、`^IXIC`（纳指）、`^DJI`（道指）；Yahoo `range=1d` 直取 `meta.chartPreviousClose` 保证昨收精度。
+   - **其余 14 个自选标的**（与 6 大指数同样适用 90 秒 `1%` 阈值，无冷却、无 10 分钟次数上限，且关闭 2 帧防抖等待 `watchlist_confirm_spike=false`）：
      - 币安 24H 固定自选：`BTCUSDT`（比特币）、`SAMSUNGUSDT`（三星电子）
      - 外盘期货：`GC1!`（黄金）、`CL1!`（石油）、`ZC1!`（美玉米，周末休市自动回退 `meta.regularMarketPrice`）
      - 国内期货：`C0`（国内玉米主力，自动降级走新浪 K 线接口）
      - 美股：`NVDA`、`MU`、`QQQ`、`SPY`、`NOK`、`SKHY`、`ANT`（Anthropic）、`SPCX`
-   - 已内置 **K 线时间戳防倒退** + **盘前单点价格毛刺 2 帧确认防抖** + **本地 15m 历史计算 & Yahoo Keep-Alive 连接复用**。
+   - 已内置 **K 线时间戳防倒退** + **本地 15m 历史计算 & Yahoo Keep-Alive 连接复用**（单点毛刺 2 帧确认防抖已通过 `watchlist_confirm_spike=false` 关闭，按需可重新开启）。
 
 ### 推送通道
 - **ntfy 自建手机推送（当前主力，免翻墙直连）**：

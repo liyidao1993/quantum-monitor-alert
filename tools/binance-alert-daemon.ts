@@ -115,6 +115,7 @@ async function main(): Promise<void> {
       window_seconds: config.instant_move.effective_window_seconds,
       threshold_percent: config.instant_move.effective_threshold_percent,
       watchlist_threshold_percent: config.instant_move.effective_watchlist_threshold_percent,
+      watchlist_confirm_spike: config.instant_move.watchlist_confirm_spike !== false,
     },
     cooldown: {
       base_seconds: config.cooldown.effective_base_seconds,
@@ -467,7 +468,7 @@ function formatConfig(config: EffectiveDaemonConfig): string {
     `监控 Top：${config.monitor.effective_top_volume}`,
     `价格刷新：${config.monitor.effective_price_seconds}s`,
     `瞬时预警：${config.instant_move.enabled ? "on" : "off"} / ${config.instant_move.effective_window_seconds}s / 币安 ${config.instant_move.effective_threshold_percent}% / Watchlist ${config.instant_move.effective_watchlist_threshold_percent}%`,
-    `冷却：${config.cooldown.effective_base_seconds}s / 阶梯 ${config.cooldown.same_direction_step_percent}%`,
+    `冷却：${config.cooldown.effective_base_seconds > 0 ? `${config.cooldown.effective_base_seconds}s` : "无冷却"} / 10m上限 ${config.cooldown.max_alerts_per_symbol_per_10min > 0 ? config.cooldown.max_alerts_per_symbol_per_10min : "不限"}`,
     `MA60：${config.ma60_alerts.enabled ? "on" : "off"}`,
     `广播：${config.ranking_broadcast.enabled ? "on" : "off"} / ${config.ranking_broadcast.interval_seconds}s / Top${config.ranking_broadcast.top_n}`,
     `广播栏目：${sections.join(", ")}`,

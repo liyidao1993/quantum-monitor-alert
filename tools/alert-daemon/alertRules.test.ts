@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import type { EffectiveDaemonConfig } from "./config.js";
+import { buildEffectiveConfig, DEFAULT_DAEMON_CONFIG, type EffectiveDaemonConfig } from "./config.js";
 import { InstantMoveRule, Ma60DeviationRule } from "./alertRules.js";
 import type { DaemonTick } from "./marketStore.js";
+import type { AppSettings } from "../../Quantum_Monitor_System/4_Shared_Types/standard_models/marketTypes.js";
 
 const config = {
   enabled: true,
@@ -137,5 +138,57 @@ assert.equal(steppedRule.evaluate(tick(103.5), t0 + 5_000)?.type, "instant_move"
 assert.equal(steppedRule.evaluate(tick(107.2), t0 + 15_000), null, "+3.57% within cooldown must not bypass when threshold+step=5%");
 const bigBreakout = steppedRule.evaluate(tick(109.5), t0 + 25_000);
 assert.equal(bigBreakout?.type, "instant_move", "+5.8% (>= threshold 3% + step 2%) should bypass cooldown");
+
+// Unrestricted mode: zero cooldown, unlimited alerts per 10m, immediate watchlist trigger (no 2-frame spike wait), 5% crypto threshold
+const unrestrictedEffective = buildEffectiveConfig(
+  {
+    AlertSettings: {
+      enabled: true,
+      cooldown_seconds: 180,
+      thresholds: { Crypto_Binance: { instant_window_seconds: 90, instant_move_percent: 3 } },
+    },
+    BinanceSettings: { monitor_top_volume: 20 },
+    RefreshIntervalSettings: { Crypto_Binance: { price_seconds: 1 } },
+  } as unknown as AppSettings,
+  {
+    ...DEFAULT_DAEMON_CONFIG,
+    monitor: { ...DEFAULT_DAEMON_CONFIG.monitor, top_volume: 30 },
+    instant_move: {
+      enabled: true,
+      window_seconds: 90,
+      threshold_percent: 5,
+      watchlist_threshold_percent: 1,
+      watchlist_confirm_spike: false,
+    },
+    cooldown: {
+      base_seconds: 0,
+      same_direction_step_percent: 0,
+      max_alerts_per_symbol_per_10min: 0,
+      separate_up_down: true,
+    },
+  },
+);
+assert.equal(unrestrictedEffective.monitor.effective_top_volume, 30);
+assert.equal(unrestrictedEffective.instant_move.effective_threshold_percent, 5);
+assert.equal(unrestrictedEffective.instant_move.watchlist_confirm_spike, false);
+assert.equal(unrestrictedEffective.cooldown.effective_base_seconds, 0, "explicit base_seconds=0 must not fall back to settings.json");
+assert.equal(unrestrictedEffective.cooldown.max_alerts_per_symbol_per_10min, 0, "max_alerts_per_symbol_per_10min=0 must remain unlimited");
+
+const freeRule = new InstantMoveRule(unrestrictedEffective);
+// Watchlist index triggers immediately on the very first >=1% move without waiting for a second frame
+assert.equal(freeRule.evaluate(wlTick("SH000001", 3500), t0), null);
+const immediateIndexHit = freeRule.evaluate(wlTick("SH000001", 3540), t0 + 15_000);
+assert.equal(immediateIndexHit?.type, "instant_move", "watchlist/index must alert on first spike when watchlist_confirm_spike=false");
+
+// Unlimited rapid consecutive waves on crypto (>=5% each) and watchlist (>=1% each) with zero cooldown/cap
+let cryptoPrice = 100;
+assert.equal(freeRule.evaluate(tick(cryptoPrice, { symbol: "SOL/USDT" }), t0), null);
+for (let i = 1; i <= 12; i++) {
+  cryptoPrice = Number((cryptoPrice * (i % 2 === 1 ? 1.055 : 0.945)).toFixed(4));
+  const hit = freeRule.evaluate(tick(cryptoPrice, { symbol: "SOL/USDT" }), t0 + i * 10_000);
+  assert.equal(hit?.type, "instant_move", `unrestricted crypto wave #${i} should trigger without cooldown or 10m cap`);
+}
+// Sub-5% crypto move still stays quiet
+assert.equal(freeRule.evaluate(tick(cryptoPrice * 1.04, { symbol: "SOL/USDT" }), t0 + 130_000), null, "4% crypto move must stay below 5% threshold");
 
 console.log("alert rule tests passed");

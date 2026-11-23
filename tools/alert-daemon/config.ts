@@ -34,6 +34,7 @@ export interface AlertDaemonConfig {
     window_seconds: number;
     threshold_percent: number;
     watchlist_threshold_percent: number;
+    watchlist_confirm_spike?: boolean;
   };
   cooldown: {
     base_seconds: number;
@@ -135,9 +136,10 @@ export const DEFAULT_DAEMON_CONFIG: AlertDaemonConfig = {
     window_seconds: 90,
     threshold_percent: 3,
     watchlist_threshold_percent: 1,
+    watchlist_confirm_spike: true,
   },
   cooldown: {
-    base_seconds: 0,
+    base_seconds: -1,
     same_direction_step_percent: 2,
     max_alerts_per_symbol_per_10min: 6,
     separate_up_down: true,
@@ -248,7 +250,13 @@ export function buildEffectiveConfig(settings: AppSettings, config: AlertDaemonC
     },
     cooldown: {
       ...config.cooldown,
-      effective_base_seconds: clampNumber(config.cooldown.base_seconds || settings.AlertSettings.cooldown_seconds || 90, 1, 3600),
+      effective_base_seconds: clampNumber(
+        Number.isFinite(Number(config.cooldown.base_seconds)) && Number(config.cooldown.base_seconds) >= 0
+          ? Number(config.cooldown.base_seconds)
+          : (settings.AlertSettings.cooldown_seconds ?? 90),
+        0,
+        3600,
+      ),
     },
     watchlist: normalizeWatchlistConfig(config.watchlist),
     telegram: {
@@ -291,11 +299,15 @@ function normalizeDaemonConfig(config: AlertDaemonConfig): AlertDaemonConfig {
       window_seconds: clampNumber(config.instant_move.window_seconds, 5, 3600),
       threshold_percent: clampNumber(config.instant_move.threshold_percent, 0.01, 100),
       watchlist_threshold_percent: clampNumber(config.instant_move.watchlist_threshold_percent || 1, 0.01, 100),
+      watchlist_confirm_spike: config.instant_move.watchlist_confirm_spike !== false,
     },
     cooldown: {
       ...config.cooldown,
+      base_seconds: Number.isFinite(Number(config.cooldown.base_seconds)) && Number(config.cooldown.base_seconds) >= 0
+        ? clampNumber(config.cooldown.base_seconds, 0, 3600)
+        : -1,
       same_direction_step_percent: clampNumber(config.cooldown.same_direction_step_percent, 0, 100),
-      max_alerts_per_symbol_per_10min: clampInteger(config.cooldown.max_alerts_per_symbol_per_10min, 1, 100),
+      max_alerts_per_symbol_per_10min: clampInteger(config.cooldown.max_alerts_per_symbol_per_10min, 0, 1000),
     },
     ma60_alerts: {
       ...config.ma60_alerts,

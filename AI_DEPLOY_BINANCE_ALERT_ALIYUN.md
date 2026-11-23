@@ -1,6 +1,8 @@
 # AI Handoff: Deploy Binance Alert Daemon To Aliyun ECS
 
-This file is for future AI agents. If the user asks to update, package, upload, redeploy, or verify the standalone headless Binance alert daemon on Aliyun ECS, read this file first.
+> **Primary Handover**: See [`HANDOVER.md`](HANDOVER.md) and [`aliyun/README.md`](aliyun/README.md) for the latest full operations guide (including `ntfy` push, 20m cooldown, and CN/US index broadcasts).
+
+This file is for future AI agents. If the user asks to update, package, upload, redeploy, or verify the standalone headless Binance alert daemon on Aliyun ECS, read `HANDOVER.md` and this file first.
 
 Do not print or expose Telegram `bot_token`, `chat_id`, SSH private keys, `.env`, or API keys.
 
@@ -14,7 +16,8 @@ Do not print or expose Telegram `bot_token`, `chat_id`, SSH private keys, `.env`
 - Node.js: v20 LTS (`/usr/bin/node`)
 - Remote app dir: `/opt/quantum-alert` (owned by low-privilege system user `quantum`)
 - systemd service: `quantum-binance-alert.service`
-- Local SSH private key: `C:\Users\ligongzi\.ssh\aliyun_remix_ed25519`
+- Local SSH private key: `C:\Users\ligongzi\.ssh\aliyun_remix_ed25519` (auto-falls back to `aliyun\local-secrets\aliyun_remix_ed25519`)
+- Self-hosted push service: `ntfy.service` (`http://47.83.122.79:8090`, config `/etc/ntfy/server.yml`)
 
 ## Important Findings & Rules
 
@@ -41,12 +44,13 @@ Do not print or expose Telegram `bot_token`, `chat_id`, SSH private keys, `.env`
 Run from PowerShell in `D:\AI\remix`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\deploy-aliyun-alert.ps1
+powershell -ExecutionPolicy Bypass -File .\aliyun\deploy-aliyun-alert.ps1
+# Config-only update (skip esbuild):
+powershell -ExecutionPolicy Bypass -File .\aliyun\deploy-aliyun-alert.ps1 -SkipBuild
 ```
 
 ## Quick Remote Verification
 
 ```powershell
-$physIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch 'FlClash|Clash|Loopback|vEthernet|WSL' -and $_.IPAddress -notmatch '^169\.254\.' } | Select-Object -First 1).IPAddress
-ssh -i "$env:USERPROFILE\.ssh\aliyun_remix_ed25519" -o "BindAddress=$physIp" root@47.83.122.79 "systemctl --no-pager status quantum-binance-alert | head -n 16; journalctl -u quantum-binance-alert -n 40 --no-pager"
+powershell -ExecutionPolicy Bypass -File .\aliyun\check-aliyun-status.ps1
 ```

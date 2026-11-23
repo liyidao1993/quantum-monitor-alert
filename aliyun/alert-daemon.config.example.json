@@ -1,21 +1,22 @@
 {
   "enabled": true,
   "monitor": {
-    "top_volume": 20,
+    "top_volume": 30,
     "price_seconds": 0,
     "status_log_seconds": 60
   },
   "instant_move": {
     "enabled": true,
     "window_seconds": 90,
-    "threshold_percent": 3,
-    "watchlist_threshold_percent": 1
+    "threshold_percent": 5,
+    "watchlist_threshold_percent": 1,
+    "watchlist_confirm_spike": false
   },
   "cooldown": {
-    "base_seconds": 1200,
+    "base_seconds": 0,
     "same_direction_step_percent": 0,
-    "max_alerts_per_symbol_per_10min": 1,
-    "separate_up_down": false
+    "max_alerts_per_symbol_per_10min": 0,
+    "separate_up_down": true
   },
   "ma60_alerts": {
     "enabled": false,
@@ -63,7 +64,7 @@
         "market": "Stocks_CN",
         "label": "上证",
         "group": "index_cn",
-        "alert_enabled": false,
+        "alert_enabled": true,
         "enabled": true
       },
       {
@@ -71,7 +72,7 @@
         "market": "Stocks_CN",
         "label": "创业",
         "group": "index_cn",
-        "alert_enabled": false,
+        "alert_enabled": true,
         "enabled": true
       },
       {
@@ -79,7 +80,7 @@
         "market": "Stocks_CN",
         "label": "科创",
         "group": "index_cn",
-        "alert_enabled": false,
+        "alert_enabled": true,
         "enabled": true
       },
       {
@@ -87,7 +88,7 @@
         "market": "Stocks_US",
         "label": "标普",
         "group": "index_us",
-        "alert_enabled": false,
+        "alert_enabled": true,
         "enabled": true
       },
       {
@@ -95,7 +96,7 @@
         "market": "Stocks_US",
         "label": "纳指",
         "group": "index_us",
-        "alert_enabled": false,
+        "alert_enabled": true,
         "enabled": true
       },
       {
@@ -103,7 +104,7 @@
         "market": "Stocks_US",
         "label": "道指",
         "group": "index_us",
-        "alert_enabled": false,
+        "alert_enabled": true,
         "enabled": true
       },
       {

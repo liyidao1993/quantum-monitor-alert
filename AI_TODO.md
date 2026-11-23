@@ -1,30 +1,19 @@
 # AI TODO
 
-This file tracks current follow-ups, risks, and useful next actions. Keep it short and update it after important changes.
+This file tracks current follow-ups and guardrails. Keep it short and update it after important changes.
 
 ## Highest Priority
 
-- Keep `AI_DEPLOY_BINANCE_ALERT_ALIYUN.md` and `aliyun/README.md` updated whenever the Aliyun ECS deployment process changes.
+- Keep `HANDOVER.md` and `aliyun/README.md` updated whenever alert rules, watchlist structure, or Aliyun ECS deployment changes.
 - Keep cloud daemon configuration safe:
   - no desktop notifications on Linux VM
   - no local proxy values in cloud `settings.json`
   - JSON files UTF-8 without BOM
-  - do not expose Telegram secrets
+  - never expose or commit secrets (`alert-daemon.config.json`, `settings.json`, `aliyun/local-secrets/`, `.runtime/weixin/`)
 
-## Cloud Binance Alert Daemon (Aliyun ECS)
+## Cloud Alert Daemon (Aliyun ECS)
 
 - One-click build and deploy script: `aliyun/deploy-aliyun-alert.ps1` (supports `-SkipBuild` for config-only updates).
 - One-click status check script: `aliyun/check-aliyun-status.ps1`.
-
-## Full UI App
-
-- Continue watching for UI text overlap in compact dashboard cards.
-- Keep homepage dense and readable.
-- Avoid expensive animations that may cause lag.
-
-## Alerts And News
-
-- Price movement alerts should remain independent from MA60.
-- MA60 deviation should be ranking/broadcast data only unless user explicitly asks for MA60 alert notifications.
-- News should not replay old items in the top notification strip on every refresh.
-- News cards should show source labels.
+- Monitor 30 pure-crypto Binance perpetuals (`90s >= 5%`) and 20 Watchlist items including A-share/US major indices (`90s >= 1%`), currently running unrestricted (`base_seconds=0`, `max_alerts_per_symbol_per_10min=0`, `watchlist_confirm_spike=false`).
+- Keep active MA60 deviation alerts disabled unless explicitly requested; MA60 deviations remain in the 10-minute periodic broadcast.

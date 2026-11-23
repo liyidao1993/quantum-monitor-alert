@@ -10,7 +10,12 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $ProjectRoot
 
 if (-not (Test-Path -LiteralPath $KeyPath)) {
-  throw "SSH private key not found: $KeyPath"
+  $fallbackKey = Join-Path $ProjectRoot "aliyun\local-secrets\aliyun_remix_ed25519"
+  if (Test-Path -LiteralPath $fallbackKey) {
+    $KeyPath = $fallbackKey
+  } else {
+    throw "SSH private key not found: $KeyPath (fallback also missing: $fallbackKey)"
+  }
 }
 
 if (-not $SkipBuild) {
