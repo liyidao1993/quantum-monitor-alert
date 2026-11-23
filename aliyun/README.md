@@ -25,20 +25,24 @@
    - 主网 REST：`https://fapi.binance.com`
    - 主网行情流 WebSocket：**`wss://fstream.binance.com/market/stream`**（注意：旧路径 `/stream` 0 帧无数据，切勿改回）
    - 通过 `/fapi/v1/exchangeInfo` 正向过滤 `status=TRADING && contractType=PERPETUAL && underlyingType=COIN && quoteAsset=USDT`，自动隔离美股/商品 TradFi 合约与稳定币。
-   - 异动阈值：90 秒窗口 `3%`。
-2. **固定自选 Watchlist（13 个标的，每 15 秒轮询，90 秒异动阈值 `1%`）**：
-   - 外盘期货：`GC1!`（黄金）、`CL1!`（石油）、`ZC1!`（美玉米）
-   - 国内期货：`C0`（国内玉米主力，自动降级走新浪 K 线接口）
-   - 美股：`NVDA`、`MU`、`QQQ`、`SPY`、`NOK`、`SKHY`、`ANT`（Anthropic）、`SPCX`
-   - 币安 24H 固定自选：`SAMSUNGUSDT`（三星电子）
+   - **90 秒瞬时异动规则**：阈值 `3%`；触发后**立即清空滑动窗口**（以触发价为新起点），且严格执行**同币种 20 分钟最多触发 1 次**（`base_seconds=1200`、`separate_up_down=false`、`same_direction_step_percent=0`、`max_alerts_per_symbol_per_10min=1`，Binance 与 Watchlist 共享同币种冷却）。
+   - **MA60 偏离**：后台持续计算 `1m / 15m / 1d` 偏离并展示在 10 分钟定时播报中；主动 MA60 异动预警当前关闭（`ma60_alerts.enabled=false`）。
+2. **大盘指数浓缩对照区 + 固定自选 Watchlist（共 20 个标的，每 15 秒轮询）**：
+   - **A 股三大指数**（`Stocks_CN`，`group=index_cn`，`alert_enabled=false` 仅定期推送）：`SH000001`（上证）、`SZ399006`（创业）、`SH000688`（科创）；主通道走东方财富实时接口，异常自动回退 Yahoo Finance。
+   - **美股三大指数**（`Stocks_US`，`group=index_us`，`alert_enabled=false` 仅定期推送）：`^GSPC`（标普）、`^IXIC`（纳指）、`^DJI`（道指）；Yahoo `range=1d` 直取 `meta.chartPreviousClose` 保证昨收精度。
+   - **固定自选 14 个标的**（90 秒异动阈值 `1%`，同样遵守同币种 20 分钟冷却）：
+     - 币安 24H 固定自选：`BTCUSDT`（比特币）、`SAMSUNGUSDT`（三星电子）
+     - 外盘期货：`GC1!`（黄金）、`CL1!`（石油）、`ZC1!`（美玉米，周末休市自动回退 `meta.regularMarketPrice`）
+     - 国内期货：`C0`（国内玉米主力，自动降级走新浪 K 线接口）
+     - 美股：`NVDA`、`MU`、`QQQ`、`SPY`、`NOK`、`SKHY`、`ANT`（Anthropic）、`SPCX`
    - 已内置 **K 线时间戳防倒退** + **盘前单点价格毛刺 2 帧确认防抖** + **本地 15m 历史计算 & Yahoo Keep-Alive 连接复用**。
 
 ### 推送通道
-- **Telegram（主推送 + 远程指令）**：实时异动告警 + 每 10 分钟排行播报 + 25s 长轮询响应 `/status` `/top` `/symbol` `/config`。
-- **ntfy 自建手机推送（免翻墙直连）**：
+- **ntfy 自建手机推送（当前主力，免翻墙直连）**：
   - 手机 App（免谷歌版，开启 WebSockets）：服务器 `http://47.83.122.79:8090`，Topic 见本地 `alert-daemon.config.json` 的 `ntfy.topic`。
-  - 实时异动告警：`priority=4`（高，响铃弹窗，已精简掉窗口低/高点、快照行与重复当前价行）。
-  - 每 10 分钟排行播报：`priority=2`（低，静默展示）。
+  - 实时异动告警：`priority=4`（高，响铃弹窗，精简 2 行去重文案）。
+  - 每 10 分钟定时播报：`priority=2`（低，静默展示）；采用紧凑对齐等宽排版，**👀 自选快照**最顶部为 4 行 3 列浓缩指数对照区（A 股在上、美股居下，方便互相参照），下方紧接自选明细。
+- **Telegram**：支持实时异动、排行播报与 25s 长轮询指令（`/status` `/top` `/symbol` `/config`），当前默认关闭（`telegram.enabled=false`），需要时可随时在配置中重新开启。
 - **微信 iLink**：仅保留**手动指令查询**（随时发 `/status` `/top` 秒回）；因微信 iLink 协议 `context_token` 约 15 分钟失效，已关闭被动定时广播与告警推送，避免 `ret=-2` 报错。
 
 ---
@@ -74,6 +78,7 @@ powershell -ExecutionPolicy Bypass -File .\aliyun\check-aliyun-status.ps1
 ---
 
 ## 5. 增删自选监控品种步骤
-1. 编辑本地 `alert-daemon.config.json` 中的 `watchlist.items`（支持 `Stocks_US`、`Futures_Global`、`Futures_CN`、`Crypto_Binance` 四种市场）。
-2. 执行 `powershell -ExecutionPolicy Bypass -File .\aliyun\deploy-aliyun-alert.ps1 -SkipBuild`。
-3. 执行 `.\aliyun\check-aliyun-status.ps1` 确认新标的在首条广播中正常出数且 0 报错。
+1. 编辑本地 `alert-daemon.config.json` 中的 `watchlist.items`（支持 `Stocks_CN`、`Stocks_US`、`Futures_Global`、`Futures_CN`、`Crypto_Binance` 五种市场，可选 `group: "index_cn" | "index_us"` 与 `alert_enabled: false`）。
+2. 同步复制 `alert-daemon.config.json` 到 `aliyun\local-secrets\alert-daemon.config.json`（不提交 GitHub）。
+3. 执行 `powershell -ExecutionPolicy Bypass -File .\aliyun\deploy-aliyun-alert.ps1 -SkipBuild`。
+4. 执行 `.\aliyun\check-aliyun-status.ps1` 确认新标的在首条广播中正常出数且 0 报错。

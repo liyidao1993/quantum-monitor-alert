@@ -9,6 +9,10 @@ dev-3000*.log
 
 # Local secrets & SSH keys (NEVER commit to public repo)
 aliyun/local-secrets/
+aliyun/总知识库.md
+aliyun/网络资产.md
+总知识库.md
+网络资产.md
 *.pem
 *.key
 *.ppk

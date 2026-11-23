@@ -12,14 +12,14 @@
     "watchlist_threshold_percent": 1
   },
   "cooldown": {
-    "base_seconds": 0,
-    "same_direction_step_percent": 2,
-    "max_alerts_per_symbol_per_10min": 6,
-    "separate_up_down": true
+    "base_seconds": 1200,
+    "same_direction_step_percent": 0,
+    "max_alerts_per_symbol_per_10min": 1,
+    "separate_up_down": false
   },
   "ma60_alerts": {
-    "enabled": true,
-    "cooldown_seconds": 300,
+    "enabled": false,
+    "cooldown_seconds": 1200,
     "same_direction_step_percent": 3,
     "intervals": {
       "1m": { "enabled": true, "threshold_percent": 8 },
@@ -31,17 +31,25 @@
     "enabled": true,
     "log_enabled": true,
     "broadcast_on_startup": true,
-    "telegram_enabled": true,
+    "telegram_enabled": false,
     "weixin_enabled": false,
+    "ntfy_enabled": true,
     "desktop_enabled": false,
-    "interval_seconds": 900,
-    "top_n": 10,
+    "interval_seconds": 600,
+    "top_n": 3,
     "sections": ["change_up", "change_down", "ma60_1m", "ma60_15m", "ma60_1d"]
   },
   "watchlist": {
     "enabled": true,
     "price_seconds": 15,
     "items": [
+      { "symbol": "SH000001", "market": "Stocks_CN", "label": "上证", "group": "index_cn", "alert_enabled": false, "enabled": true },
+      { "symbol": "SZ399006", "market": "Stocks_CN", "label": "创业", "group": "index_cn", "alert_enabled": false, "enabled": true },
+      { "symbol": "SH000688", "market": "Stocks_CN", "label": "科创", "group": "index_cn", "alert_enabled": false, "enabled": true },
+      { "symbol": "^GSPC", "market": "Stocks_US", "label": "标普", "group": "index_us", "alert_enabled": false, "enabled": true },
+      { "symbol": "^IXIC", "market": "Stocks_US", "label": "纳指", "group": "index_us", "alert_enabled": false, "enabled": true },
+      { "symbol": "^DJI", "market": "Stocks_US", "label": "道指", "group": "index_us", "alert_enabled": false, "enabled": true },
+      { "symbol": "BTCUSDT", "market": "Crypto_Binance", "label": "比特币", "enabled": true },
       { "symbol": "GC1!", "market": "Futures_Global", "label": "黄金", "enabled": true },
       { "symbol": "CL1!", "market": "Futures_Global", "label": "石油", "enabled": true },
       { "symbol": "NVDA", "market": "Stocks_US", "label": "英伟达", "enabled": true },
@@ -50,19 +58,28 @@
     ]
   },
   "telegram": {
-    "enabled": true,
+    "enabled": false,
     "bot_token": "",
     "chat_id": "",
-    "command_polling_enabled": true,
+    "command_polling_enabled": false,
     "command_poll_interval_seconds": 5,
     "send_startup_message": false
   },
   "weixin": {
     "enabled": false,
+    "alert_enabled": false,
     "credential_path": ".runtime/weixin/token.json",
     "state_path": ".runtime/weixin/state.json",
     "command_polling_enabled": true,
     "send_startup_message": false
+  },
+  "ntfy": {
+    "enabled": true,
+    "base_url": "http://127.0.0.1:8090",
+    "topic": "YOUR_PRIVATE_NTFY_TOPIC",
+    "token": "",
+    "alert_priority": 4,
+    "broadcast_priority": 2
   },
   "desktop_notify": {
     "enabled": false,

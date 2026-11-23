@@ -96,27 +96,25 @@ D:\AI\remix\stop-remix-watchdog.ps1
 
 ## Current Cloud Deployment
 
-Standalone Binance alert daemon is deployed on Google Cloud.
+Standalone Binance alert daemon is deployed on Aliyun ECS (`cn-hongkong`).
 
 Read this file for exact deployment/update steps:
 
 ```text
-D:\AI\remix\AI_DEPLOY_BINANCE_ALERT_GCP.md
+D:\AI\remix\AI_DEPLOY_BINANCE_ALERT_ALIYUN.md
+D:\AI\remix\aliyun\README.md
 ```
 
 Current successful target:
 
-- Google Cloud account: `599267295@qq.com`
-- Project ID: `gen-lang-client-0499133969`
-- VM: `quantum-binance-alert-asia`
-- Zone: `asia-east1-b`
-- Type: `e2-micro`
+- Cloud Provider: Aliyun ECS (`cn-hongkong`, 中国香港 C)
+- Instance ID: `i-j6cch8046l3vexqajegj`
+- Public IP: `47.83.122.79`
 - Remote dir: `/opt/quantum-alert`
 - Service: `quantum-binance-alert.service`
 
 Important cloud notes:
 
-- Avoid US regions for Binance. `us-central1` caused Binance `451 Region Restricted`.
 - Cloud config disables desktop notifications.
 - JSON files must be UTF-8 without BOM.
 
@@ -152,13 +150,8 @@ User requirements already implemented in this daemon:
 Deployment handoff:
 
 ```text
-AI_DEPLOY_BINANCE_ALERT_GCP.md
-```
-
-Detailed GCP runbook:
-
-```text
-Quantum_Monitor_System\0_Docs\GoogleCloud_币安预警守护部署经验.md
+AI_DEPLOY_BINANCE_ALERT_ALIYUN.md
+aliyun\README.md
 ```
 
 This project context:
@@ -203,13 +196,7 @@ rtk powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing http://12
 Cloud daemon status:
 
 ```powershell
-$gcloud = "C:\Users\ligongzi\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
-
-& $gcloud compute ssh "quantum-binance-alert-asia" `
-  --project="gen-lang-client-0499133969" `
-  --zone="asia-east1-b" `
-  --command="sudo systemctl --no-pager --full status quantum-binance-alert; sudo journalctl -u quantum-binance-alert -n 120 --no-pager" `
-  --quiet
+powershell -ExecutionPolicy Bypass -File .\aliyun\check-aliyun-status.ps1
 ```
 
 Expected cloud logs:
