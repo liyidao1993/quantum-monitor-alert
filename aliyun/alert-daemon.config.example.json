@@ -18,7 +18,7 @@
     "separate_up_down": false
   },
   "ma60_alerts": {
-    "enabled": true,
+    "enabled": false,
     "cooldown_seconds": 1200,
     "same_direction_step_percent": 3,
     "intervals": {
